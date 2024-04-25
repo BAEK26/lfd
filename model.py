@@ -19,8 +19,8 @@ class SimpleLearner(nn.Module):
 
     def forward(self,X, hidden, cell):
         
-        # X = X.transpose(0, 1)
-        outputs, hidden, cell = self.lstm(X, hidden, cell)
+        X = X.transpose(0, 1)
+        outputs, (hidden, cell) = self.lstm(X, (hidden, cell))
         outputs = outputs[-1]  # 최종 예측 Hidden Layer
         model = torch.mm(outputs, self.W) + self.b  # 최종 예측 최종 출력 층
         return model, hidden, cell
@@ -81,23 +81,27 @@ if __name__=="__main__":
             
             
     #inference
-    pos = init_positions = torch.from_numpy(np.array([0,0,0]))
-    state_dict = {}
-    for loc, val in zip(['x', 'y', 'z'], pos):
-        state_dict[loc] = val
-    state_dict['t'] = datetime.datetime.now()
-    Testbed = State(**state_dict)
+    poss = init_positions = torch.from_numpy(np.array([[0,0,0]]))
+    states = []
+    for pos in poss:
+        state_dict = {}
+        for loc, val in zip(['x', 'y', 'z'], pos):
+            state_dict[loc] = val
+        state_dict['t'] = datetime.datetime.now()
+        states.append(state_dict)
+    for state_dict in states:
+        Testbed = State(**state_dict)
     result =[]
     h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
     c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
     x = []
     t = []
     for i in range(15):
-        predict, h, c = model(pos, h, c).data.max(1, keepdim=True)
+        predict, h, c = model(poss, h, c).data.max(1, keepdim=True)
         
         act_dict={}
         for loc, val in zip(['dx','dy','dz'], predict[1:]):
-            act_dict[loc]=val
+            act_dict[loc]=float(val)
         action = Action(**act_dict)
         Testbed.act(action)
         x.append(Testbed.to_list()[0])

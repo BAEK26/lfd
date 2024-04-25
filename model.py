@@ -19,7 +19,8 @@ class SimpleLearner(nn.Module):
 
     def forward(self,X, hidden, cell):
         
-        X = X.transpose(0, 1)
+        # Add batch dimension to input
+        X = X.unsqueeze(0)
         outputs, (hidden, cell) = self.lstm(X, (hidden, cell))
         outputs = outputs[-1]  # 최종 예측 Hidden Layer
         model = torch.mm(outputs, self.W) + self.b  # 최종 예측 최종 출력 층
@@ -81,7 +82,7 @@ if __name__=="__main__":
             
             
     #inference
-    poss = init_positions = torch.from_numpy(np.array([[0,0,0]]))
+    poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.]], dtype=np.float32))
     states = []
     for pos in poss:
         state_dict = {}
@@ -97,15 +98,18 @@ if __name__=="__main__":
     x = []
     t = []
     for i in range(15):
-        predict, h, c = model(poss, h, c).data.max(1, keepdim=True)
-        
+        predict, h, c = model(poss, h, c)
+        predict = predict[0, 1:]
+
+        predict = predict.tolist()
         act_dict={}
-        for loc, val in zip(['dx','dy','dz'], predict[1:]):
+        for loc, val in zip(['dx','dy','dz'], predict):
             act_dict[loc]=float(val)
         action = Action(**act_dict)
         Testbed.act(action)
         x.append(Testbed.to_list()[0])
-        t.append(Testbed.to_list()[-1])
+        # t.append(Testbed.to_list()[-1])
+        t.append(i)
         result.append(predict)
     print(result)
     plt.plot(t,x)

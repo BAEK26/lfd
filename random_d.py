@@ -1,3 +1,4 @@
+import torch
 import datetime
 import numpy as np
 import random
@@ -46,8 +47,31 @@ def generate_random_action(state, now):
     # actions = np.array([delx, dely, delz])
     return actions, deltime
 
+def generate_random_scenario(save=None) -> list:
+    positions = []
+    actions = []
+    save_times = []
+    save_xs=[]
+    save_accum=0
+    state = State(**{"x":0, "y":0, "z": 0, "t": datetime.datetime.now()})
+    for i in range(10):
+        positions.append(torch.tensor([state.to_list()[:-1]]))
+        action, deltime = generate_random_action(state, datetime.datetime.now())
+        actions.append(torch.tensor([action.to_list()+[deltime]]))
+        state.act(action)
+        save_accum+=deltime
+        save_times.append(save_accum+deltime)
+        save_xs.append(state.x)
+    
+    if save:
+        plt.plot(save_times,save_xs)
+        # plt.savefig(f'sc-{random.randint(0,1000000)}.png')
+        plt.savefig(f'sc.png')
+    return [actions, positions]
+
 
 if __name__ == "__main__":
+    generate_random_scenario(True)
     current = State(**{"x":0, "y":0, "z": 0, "t": datetime.datetime.now()})
     actions = []
     times = []

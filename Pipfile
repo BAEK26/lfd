@@ -9,6 +9,7 @@ numpy = "*"
 matplotlib = "*"
 torch = "*"
 torchvision = "*"
+tqdm = "*"
 
 [dev-packages]
 

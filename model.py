@@ -2,6 +2,7 @@ import torch
 import argparse
 import datetime
 from random_d import *
+from tqdm import tqdm
 import torch.nn as nn
 from torch.nn import functional as F
 dtype = torch.float
@@ -23,6 +24,9 @@ class SimpleLearner(nn.Module):
         X = X.unsqueeze(0)
         outputs, (hidden, cell) = self.lstm(X, (hidden, cell))
         outputs = outputs[-1]  # 최종 예측 Hidden Layer
+        # print("Shape of outputs:", outputs.shape)
+        # print("Shape of self.W:", self.W.shape)
+
         model = torch.mm(outputs, self.W) + self.b  # 최종 예측 최종 출력 층
         return model, hidden, cell
 
@@ -59,26 +63,35 @@ if __name__=="__main__":
     print(f"Using {device} device")
 
     #data
+    # position, 
     actions_dataset = [] 
+    for i in range(50):
+        actions_dataset.append(generate_random_scenario(True))
+    print(actions_dataset[0][0][0])
+    print(actions_dataset[0][1][0])
 
     #train
     model = SimpleLearner(args).to(device)
     criterion = nn.L1Loss()#MSEloss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
-    for epoch in range(100):
+    for epoch in tqdm(range(100)):
         for actions, pos in actions_dataset:
+            optimizer.zero_grad()
             hidden = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
             cell = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
             for act, p in zip(actions, pos):
-                output, hidden, cell = model(p, (hidden, cell))
+                p = p.to(device)
+                act = act.to(device)
+                output, hidden, cell = model(p, hidden, cell)
                 loss = criterion(output, act)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                retain_graph = True if act is not pos[-1] else False
+                loss.backward(retain_graph=retain_graph)
+            optimizer.step()
 
-            if (epoch + 1) % 10 == 0:
-                print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
+
+        if (epoch + 1) % 10 == 0:
+            print('Epoch:', '%04d' % (epoch + 1), 'loss =', '{:.6f}'.format(loss))
             
             
     #inference
@@ -97,10 +110,11 @@ if __name__=="__main__":
     c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
     x = []
     t = []
+    at = 0
     for i in range(15):
         predict, h, c = model(poss, h, c)
+        dt = predict[0,-1]
         predict = predict[0, 1:]
-
         predict = predict.tolist()
         act_dict={}
         for loc, val in zip(['dx','dy','dz'], predict):
@@ -109,8 +123,10 @@ if __name__=="__main__":
         Testbed.act(action)
         x.append(Testbed.to_list()[0])
         # t.append(Testbed.to_list()[-1])
-        t.append(i)
+        dt = dt.detach().numpy()
+        t.append(at + dt)
+        at += dt
         result.append(predict)
-    print(result)
+    # print(result)
     plt.plot(t,x)
     plt.show()

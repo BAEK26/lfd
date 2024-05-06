@@ -37,11 +37,12 @@ def generate_random_action(state, now):
     state.t = now
     # deltime = np.random.normal(1, 0.5, size=(1,))
     deltime = random.gauss(mu=1.0, sigma=0.5)
+    deltime = abs(deltime)
     # deltime = datetime.datetime.now()-now
     # delx, dely, delz = np.random.normal(DEMO_SPEED*deltime, DEMO_SPEED/2*deltime, size=(1,)), np.random.normal(0,0,size=(1,)), np.random.normal(0,0,size=(1,))
     delx, dely, delz = random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime), 0, 0
     # delx, dely, delz = DEMO_SPEED*deltime, 0, 0
-    if state.x > 5:
+    if state.x > 50:
         delx = 0
     actions = Action(dx=delx, dy=dely, dz=delz)
     # actions = np.array([delx, dely, delz])
@@ -54,14 +55,16 @@ def generate_random_scenario(save=None) -> list:
     save_xs=[]
     save_accum=0
     state = State(**{"x":0, "y":0, "z": 0, "t": datetime.datetime.now()})
-    for i in range(10):
+    for i in range(50):
         positions.append(torch.tensor([state.to_list()[:-1]]))
         action, deltime = generate_random_action(state, datetime.datetime.now())
+        if action.dx == 0:
+            continue
         actions.append(torch.tensor([action.to_list()+[deltime]]))
         state.act(action)
-        save_accum+=deltime
         save_times.append(save_accum+deltime)
         save_xs.append(state.x)
+        save_accum+=deltime
     
     if save:
         plt.plot(save_times,save_xs)

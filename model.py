@@ -50,8 +50,9 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidden_size', action='store', type=int, default=32, help='hidden_size', required=False)
     parser.add_argument('--input_size', action='store', type=int, default=3, help='input_size', required=False) #x, y, z
-    parser.add_argument('--output_size', action='store', type=int, default=4, help='output_size', required=False) #dt, dx, dy, dz
+    parser.add_argument('--output_size', action='store', type=int, default=4, help='output_size', required=False) #dx, dy, dz, dt
     parser.add_argument('--batch_size', action='store', type=int, default=1, help='output_size', required=False) #chunk?
+    parser.add_argument('--epochs', action='store', type=int, default=100, help='output_size', required=False) 
     args = parser.parse_args()
     device = (
     "cuda"
@@ -65,7 +66,7 @@ if __name__=="__main__":
     #data
     # position, 
     actions_dataset = [] 
-    for i in range(50):
+    for i in range(15):
         actions_dataset.append(generate_random_scenario(True))
     print(actions_dataset[0][0][0])
     print(actions_dataset[0][1][0])
@@ -74,59 +75,73 @@ if __name__=="__main__":
     model = SimpleLearner(args).to(device)
     criterion = nn.L1Loss()#MSEloss
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-
-    for epoch in tqdm(range(100)):
+    num_epochs = args.epochs
+    for epoch in tqdm(range(num_epochs)):
         for actions, pos in actions_dataset:
             optimizer.zero_grad()
             hidden = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
             cell = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
+            # data_x = 0
+            # model_x = 0
+            # scenario_len = len(actions[0])
             for act, p in zip(actions, pos):
+                # data_x += act[0][0]
                 p = p.to(device)
                 act = act.to(device)
                 output, hidden, cell = model(p, hidden, cell)
+                # model_x += output[0][0]
+                if epoch == 50 and act is pos[-1]:
+                    print('p',p)
+                    print('output',output)
+                    print('act',act)
+                    print()
                 loss = criterion(output, act)
-                retain_graph = True if act is not pos[-1] else False
+                retain_graph = True if act is not actions[-1] else False
                 loss.backward(retain_graph=retain_graph)
+            # if epoch == 50:
+            #     exit()
+            # print('data_average: ', data_x/scenario_len, 'model_average: ', model_x/scenario_len)
             optimizer.step()
 
 
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) %(num_epochs/10) == 0:
             print('Epoch:', '%04d' % (epoch + 1), 'loss =', '{:.6f}'.format(loss))
             
             
     #inference
-    poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.]], dtype=np.float32))
-    states = []
-    for pos in poss:
-        state_dict = {}
-        for loc, val in zip(['x', 'y', 'z'], pos):
-            state_dict[loc] = val
-        state_dict['t'] = datetime.datetime.now()
-        states.append(state_dict)
-    for state_dict in states:
-        Testbed = State(**state_dict)
-    result =[]
-    h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
-    c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
-    x = []
-    t = []
-    at = 0
-    for i in range(15):
-        predict, h, c = model(poss, h, c)
-        dt = predict[0,-1]
-        predict = predict[0, 1:]
-        predict = predict.tolist()
-        act_dict={}
-        for loc, val in zip(['dx','dy','dz'], predict):
-            act_dict[loc]=float(val)
-        action = Action(**act_dict)
-        Testbed.act(action)
-        x.append(Testbed.to_list()[0])
-        # t.append(Testbed.to_list()[-1])
-        dt = dt.detach().numpy()
-        t.append(at + dt)
-        at += dt
-        result.append(predict)
-    # print(result)
-    plt.plot(t,x)
-    plt.show()
+    for kk in range(2):
+        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.]], dtype=np.float32))
+        states = []
+        for pos in poss:
+            state_dict = {}
+            for loc, val in zip(['x', 'y', 'z'], pos):
+                state_dict[loc] = val
+            state_dict['t'] = datetime.datetime.now()
+            states.append(state_dict)
+        for state_dict in states:
+            Testbed = State(**state_dict)
+        result =[]
+        h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
+        c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
+        x = []
+        t = []
+        at = 0
+        for i in range(50):
+            predict, h, c = model(poss, h, c)
+            dt = predict[0,-1]
+            predict = predict[0, 0:-1]
+            predict = predict.tolist()
+            act_dict={}
+            for loc, val in zip(['dx','dy','dz'], predict):
+                act_dict[loc]=float(val)
+            action = Action(**act_dict)
+            Testbed.act(action)
+            x.append(Testbed.to_list()[0])
+            # t.append(Testbed.to_list()[-1])
+            dt = dt.detach().numpy()
+            t.append(at + dt)
+            at += dt
+            result.append(predict)
+        # print(result)
+        plt.plot(t,x)
+        plt.savefig('result.png')

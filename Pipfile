@@ -7,10 +7,10 @@ name = "pypi"
 pydantic = "*"
 numpy = "*"
 matplotlib = "*"
-torch = "==2.0.1"
-torchvision = "==0.15.2"
+torch = "*"
 tqdm = "*"
-torchaudio = "==2.0.2"
+torchvision = "*"
+torchaudio = "*"
 
 [dev-packages]
 

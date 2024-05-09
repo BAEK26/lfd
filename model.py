@@ -10,7 +10,7 @@ dtype = torch.float
 class SimpleLearner(nn.Module): 
     def __init__(self, args):
         super(SimpleLearner, self).__init__()
-        self.state = State(**{"x":0, "y":0, "z": 0, "t": datetime.datetime.now()})
+        self.state = State(**{"x":0, "y":0, "z": 0, "t": 0})
         self.hidden_size = args.hidden_size
 
         self.lstm = nn.LSTM(input_size=args.input_size, hidden_size=args.hidden_size, dropout=0.2)
@@ -49,7 +49,7 @@ class SimpleLearner(nn.Module):
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidden_size', action='store', type=int, default=32, help='hidden_size', required=False)
-    parser.add_argument('--input_size', action='store', type=int, default=3, help='input_size', required=False) #x, y, z
+    parser.add_argument('--input_size', action='store', type=int, default=4, help='input_size', required=False) #x, y, z, t
     parser.add_argument('--output_size', action='store', type=int, default=4, help='output_size', required=False) #dx, dy, dz, dt
     parser.add_argument('--batch_size', action='store', type=int, default=1, help='output_size', required=False) #chunk?
     parser.add_argument('--epochs', action='store', type=int, default=100, help='output_size', required=False) 
@@ -66,10 +66,11 @@ if __name__=="__main__":
     #data
     # position, 
     actions_dataset = [] 
-    for i in range(15):
+    for i in range(5):
         actions_dataset.append(generate_random_scenario(True))
-    print(actions_dataset[0][0][0])
-    print(actions_dataset[0][1][0])
+    
+    # print('actions',actions_dataset[0][0])
+    # print('pos',actions_dataset[0][1])
 
     #train
     model = SimpleLearner(args).to(device)
@@ -110,13 +111,12 @@ if __name__=="__main__":
             
     #inference
     for kk in range(2):
-        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.]], dtype=np.float32))
+        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0., 0.]], dtype=np.float32))
         states = []
         for pos in poss:
             state_dict = {}
-            for loc, val in zip(['x', 'y', 'z'], pos):
+            for loc, val in zip(['x', 'y', 'z', 't'], pos):
                 state_dict[loc] = val
-            state_dict['t'] = datetime.datetime.now()
             states.append(state_dict)
         for state_dict in states:
             Testbed = State(**state_dict)
@@ -131,11 +131,12 @@ if __name__=="__main__":
             dt = predict[0,-1]
             predict = predict[0, 0:-1]
             predict = predict.tolist()
+            print(predict)
             act_dict={}
             for loc, val in zip(['dx','dy','dz'], predict):
                 act_dict[loc]=float(val)
             action = Action(**act_dict)
-            Testbed.act(action)
+            Testbed.act(action, dt)
             x.append(Testbed.to_list()[0])
             # t.append(Testbed.to_list()[-1])
             dt = dt.detach().numpy()

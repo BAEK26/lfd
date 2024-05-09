@@ -10,15 +10,18 @@ class State(BaseModel):
     x : float
     y : float
     z : float
-    t : datetime.datetime
+    t : float
 
-    def act(self, action):
+    def act(self, action, deltime):
         self.x += action.dx
         # self.x += action[0]
         self.y += action.dy
         # self.y += action[1]
         self.z += action.dz
         # self.z += action[0]
+        self.t += deltime
+    def elapse(self, dt):
+        self.t += dt
     def to_list(self):
         return [self.x, self.y, self.z, self.t]
 
@@ -35,7 +38,6 @@ class Action(BaseModel):
 
 def generate_random_action(state, now):
     state.t = now
-    # deltime = np.random.normal(1, 0.5, size=(1,))
     deltime = random.gauss(mu=1.0, sigma=0.5)
     deltime = abs(deltime)
     # deltime = datetime.datetime.now()-now
@@ -54,14 +56,14 @@ def generate_random_scenario(save=None) -> list:
     save_times = []
     save_xs=[]
     save_accum=0
-    state = State(**{"x":0, "y":0, "z": 0, "t": datetime.datetime.now()})
+    state = State(**{"x":0, "y":0, "z": 0, "t": 0})
     for i in range(50):
-        positions.append(torch.tensor([state.to_list()[:-1]]))
-        action, deltime = generate_random_action(state, datetime.datetime.now())
+        positions.append(torch.tensor([state.to_list()]))
+        action, deltime = generate_random_action(state, save_accum)
         if action.dx == 0:
             continue
         actions.append(torch.tensor([action.to_list()+[deltime]]))
-        state.act(action)
+        state.act(action, deltime)
         save_times.append(save_accum+deltime)
         save_xs.append(state.x)
         save_accum+=deltime
@@ -75,7 +77,7 @@ def generate_random_scenario(save=None) -> list:
 
 if __name__ == "__main__":
     generate_random_scenario(True)
-    current = State(**{"x":0, "y":0, "z": 0, "t": datetime.datetime.now()})
+    current = State(**{"x":0, "y":0, "z": 0, "t": 0.})
     actions = []
     times = []
     xs=[]
@@ -83,8 +85,8 @@ if __name__ == "__main__":
     accum_time=0
     x = 0
     for i in range(10):
-        action, deltime = generate_random_action(current, datetime.datetime.now())
-        current.act(action)
+        action, deltime = generate_random_action(current, current.t)
+        current.act(action, deltime)
         actions.append(action.to_list())
         times.append(accum_time+deltime)
         dts.append(deltime)

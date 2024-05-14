@@ -36,21 +36,28 @@ class Action(BaseModel):
 #     state : State
 #     actions : Action
 
-def generate_random_action(state, now):
+def generate_xplus_action(state, now):
     state.t = now
     deltime = random.gauss(mu=1.0, sigma=0.5)
     deltime = abs(deltime)
-    # deltime = datetime.datetime.now()-now
-    # delx, dely, delz = np.random.normal(DEMO_SPEED*deltime, DEMO_SPEED/2*deltime, size=(1,)), np.random.normal(0,0,size=(1,)), np.random.normal(0,0,size=(1,))
     delx, dely, delz = random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime), 0, 0
-    # delx, dely, delz = DEMO_SPEED*deltime, 0, 0
     if state.x > 50:
         delx = 0
     actions = Action(dx=delx, dy=dely, dz=delz)
-    # actions = np.array([delx, dely, delz])
+    return actions, deltime
+
+def generate_dir_action(state, now, dir=1):
+    state.t = now
+    deltime = random.gauss(mu=1.0, sigma=0.5)
+    deltime = abs(deltime)
+    delx, dely, delz = random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime), 0, 0
+    if state.x > 50:
+        delx = 0
+    actions = Action(dx=delx*dir, dy=dely, dz=delz)
     return actions, deltime
 
 def generate_random_scenario(save=None) -> list:
+    x_dir = +1
     positions = []
     actions = []
     save_times = []
@@ -59,7 +66,8 @@ def generate_random_scenario(save=None) -> list:
     state = State(**{"x":0, "y":0, "z": 0, "t": 0})
     for i in range(50):
         positions.append(torch.tensor([state.to_list()]))
-        action, deltime = generate_random_action(state, save_accum)
+        action, deltime = generate_dir_action(state, save_accum, x_dir)
+        # action, deltime = generate_xplus_action(state, save_accum)
         if action.dx == 0:
             continue
         actions.append(torch.tensor([action.to_list()+[deltime]]))
@@ -67,6 +75,8 @@ def generate_random_scenario(save=None) -> list:
         save_times.append(save_accum+deltime)
         save_xs.append(state.x)
         save_accum+=deltime
+        if state.x > 15:
+            x_dir = -1
     
     if save:
         plt.plot(save_times,save_xs)
@@ -85,7 +95,7 @@ if __name__ == "__main__":
     accum_time=0
     x = 0
     for i in range(10):
-        action, deltime = generate_random_action(current, current.t)
+        action, deltime = generate_dir_action(current, current.t, +1)
         current.act(action, deltime)
         actions.append(action.to_list())
         times.append(accum_time+deltime)

@@ -16,7 +16,9 @@ class SimpleLearner(nn.Module):
         self.lstm = nn.LSTM(input_size=args.input_size, hidden_size=args.hidden_size, dropout=0.2)
         self.W = nn.Parameter(torch.randn([args.hidden_size, args.output_size]).type(dtype))
         self.b = nn.Parameter(torch.randn([args.output_size]).type(dtype))
-        self.softmax = nn.LogSoftmax(dim=1)
+        self.final = nn.Linear(self.hidden_size, args.output_size, bias= True)
+
+        self.activateion = nn.ReLU()    
 
     def forward(self,X, hidden, cell):
         
@@ -27,7 +29,9 @@ class SimpleLearner(nn.Module):
         # print("Shape of outputs:", outputs.shape)
         # print("Shape of self.W:", self.W.shape)
 
-        model = torch.mm(outputs, self.W) + self.b  # 최종 예측 최종 출력 층
+        # model = torch.mm(outputs, self.W) + self.b  # 최종 예측 최종 출력 층
+        model = self.final(outputs)
+        # model = self.activateion(model)
         return model, hidden, cell
 
     def initHidden(self):
@@ -48,7 +52,7 @@ class SimpleLearner(nn.Module):
         #     loss_dict['l1'] = l1
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--hidden_size', action='store', type=int, default=32, help='hidden_size', required=False)
+    parser.add_argument('--hidden_size', action='store', type=int, default=64, help='hidden_size', required=False)
     parser.add_argument('--input_size', action='store', type=int, default=4, help='input_size', required=False) #x, y, z, t
     parser.add_argument('--output_size', action='store', type=int, default=4, help='output_size', required=False) #dx, dy, dz, dt
     parser.add_argument('--batch_size', action='store', type=int, default=1, help='output_size', required=False) #chunk?
@@ -66,7 +70,7 @@ if __name__=="__main__":
     #data
     # position, 
     actions_dataset = [] 
-    for i in range(5):
+    for i in range(10):
         actions_dataset.append(generate_random_scenario(True))
     
     # print('actions',actions_dataset[0][0])
@@ -74,35 +78,29 @@ if __name__=="__main__":
 
     #train
     model = SimpleLearner(args).to(device)
-    criterion = nn.L1Loss()#MSEloss
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    # criterion = nn.L1Loss()#MSEloss
+    criterion = nn.MSELoss()#MSEloss
+    # optimizer = torch.optim.Adam(model.parameters(), lr=1.5e-1)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     num_epochs = args.epochs
+    torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(num_epochs)):
         for actions, pos in actions_dataset:
-            optimizer.zero_grad()
             hidden = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
             cell = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
-            # data_x = 0
-            # model_x = 0
-            # scenario_len = len(actions[0])
             for act, p in zip(actions, pos):
-                # data_x += act[0][0]
                 p = p.to(device)
                 act = act.to(device)
+                optimizer.zero_grad()
+
+                # Copy hidden and cell states to avoid in-place operations
+                hidden = hidden.detach()
+                cell = cell.detach()
                 output, hidden, cell = model(p, hidden, cell)
-                # model_x += output[0][0]
-                if epoch == 50 and act is pos[-1]:
-                    print('p',p)
-                    print('output',output)
-                    print('act',act)
-                    print()
                 loss = criterion(output, act)
-                retain_graph = True if act is not actions[-1] else False
-                loss.backward(retain_graph=retain_graph)
-            # if epoch == 50:
-            #     exit()
-            # print('data_average: ', data_x/scenario_len, 'model_average: ', model_x/scenario_len)
-            optimizer.step()
+                # retain_graph = True if act is not actions[-1] else False
+                loss.backward(retain_graph=True)
+                optimizer.step()
 
 
         if (epoch + 1) %(num_epochs/10) == 0:
@@ -111,7 +109,7 @@ if __name__=="__main__":
             
     #inference
     for kk in range(2):
-        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0., 0.]], dtype=np.float32))
+        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.,0.]], dtype=np.float32))
         states = []
         for pos in poss:
             state_dict = {}
@@ -128,17 +126,17 @@ if __name__=="__main__":
         at = 0
         for i in range(50):
             predict, h, c = model(poss, h, c)
+            poss += predict
+            print(poss, predict)
             dt = predict[0,-1]
             predict = predict[0, 0:-1]
             predict = predict.tolist()
-            print(predict)
             act_dict={}
             for loc, val in zip(['dx','dy','dz'], predict):
                 act_dict[loc]=float(val)
             action = Action(**act_dict)
             Testbed.act(action, dt)
             x.append(Testbed.to_list()[0])
-            # t.append(Testbed.to_list()[-1])
             dt = dt.detach().numpy()
             t.append(at + dt)
             at += dt

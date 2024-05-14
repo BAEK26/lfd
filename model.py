@@ -86,8 +86,8 @@ if __name__=="__main__":
     torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(num_epochs)):
         for actions, pos in actions_dataset:
-            hidden = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
-            cell = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
+            hidden = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
+            cell = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
             for act, p in zip(actions, pos):
                 p = p.to(device)
                 act = act.to(device)
@@ -109,7 +109,7 @@ if __name__=="__main__":
             
     #inference
     for kk in range(2):
-        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.,0.]], dtype=np.float32))
+        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.,0.]], dtype=np.float32)).to(device)
         states = []
         for pos in poss:
             state_dict = {}
@@ -119,8 +119,8 @@ if __name__=="__main__":
         for state_dict in states:
             Testbed = State(**state_dict)
         result =[]
-        h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
-        c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True)
+        h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
+        c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
         x = []
         t = []
         at = 0
@@ -137,6 +137,7 @@ if __name__=="__main__":
             action = Action(**act_dict)
             Testbed.act(action, dt)
             x.append(Testbed.to_list()[0])
+            dt = dt.cpu()
             dt = dt.detach().numpy()
             t.append(at + dt)
             at += dt

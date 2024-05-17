@@ -55,9 +55,18 @@ def generate_dir_action(state, now, dir=1):
         delx = 0
     actions = Action(dx=delx*dir, dy=dely*dir, dz=delz*dir)
     return actions, deltime
+def generate_dir_test(state, now, dir=1):
+    state.t = now
+    deltime = random.gauss(mu=1.0, sigma=0.05)
+    deltime = abs(deltime)
+    delx, dely, delz = random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/5*deltime), random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/5*deltime), random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/5*deltime)
+    if state.x > 50:
+        delx = 0
+    actions = Action(dx=delx*dir, dy=dely*dir, dz=delz*dir)
+    return actions, deltime
 
 def generate_random_scenario(save=None) -> list:
-    x_dir = +1
+    xyz_dir = +1
     positions = []
     actions = []
     save_times = []
@@ -66,7 +75,7 @@ def generate_random_scenario(save=None) -> list:
     state = State(**{"x":0, "y":0, "z": 0, "t": 0})
     for i in range(50):
         positions.append(torch.tensor([state.to_list()]))
-        action, deltime = generate_dir_action(state, save_accum, x_dir)
+        action, deltime = generate_dir_test(state, save_accum, xyz_dir)
         # action, deltime = generate_xplus_action(state, save_accum)
         if action.dx == 0:
             continue
@@ -76,7 +85,35 @@ def generate_random_scenario(save=None) -> list:
         save_xs.append(state.x)
         save_accum+=deltime
         if state.x > 15:
-            x_dir = -1
+            xyz_dir = -1
+    
+    if save:
+        plt.plot(save_times,save_xs)
+        # plt.savefig(f'sc-{random.randint(0,1000000)}.png')
+        plt.savefig(f'sc.png')
+    return [actions, positions]
+
+def generate_test_scenario(save=None) -> list:
+    xyz_dir = +1
+    positions = []
+    actions = []
+    save_times = []
+    save_xs=[]
+    save_accum=0
+    state = State(**{"x":0, "y":0, "z": 0, "t": 0})
+    for i in range(50):
+        positions.append(torch.tensor([state.to_list()]))
+        action, deltime = generate_dir_action(state, save_accum, xyz_dir)
+        # action, deltime = generate_xplus_action(state, save_accum)
+        if action.dx == 0:
+            continue
+        actions.append(torch.tensor([action.to_list()+[deltime]]))
+        state.act(action, deltime)
+        save_times.append(save_accum+deltime)
+        save_xs.append(state.x)
+        save_accum+=deltime
+        if state.x > 15:
+            xyz_dir = -1
     
     if save:
         plt.plot(save_times,save_xs)

@@ -50,10 +50,10 @@ def generate_dir_action(state, now, dir=1):
     state.t = now
     deltime = random.gauss(mu=1.0, sigma=0.5)
     deltime = abs(deltime)
-    delx, dely, delz = random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime), 0, 0
+    delx, dely, delz = random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime), random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime), random.gauss(mu=DEMO_SPEED*deltime, sigma=DEMO_SPEED/2*deltime)
     if state.x > 50:
         delx = 0
-    actions = Action(dx=delx*dir, dy=dely, dz=delz)
+    actions = Action(dx=delx*dir, dy=dely*dir, dz=delz*dir)
     return actions, deltime
 
 def generate_random_scenario(save=None) -> list:

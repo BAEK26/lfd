@@ -56,7 +56,7 @@ if __name__=="__main__":
     parser.add_argument('--input_size', action='store', type=int, default=4, help='input_size', required=False) #x, y, z, t
     parser.add_argument('--output_size', action='store', type=int, default=4, help='output_size', required=False) #dx, dy, dz, dt
     parser.add_argument('--batch_size', action='store', type=int, default=1, help='output_size', required=False) #chunk?
-    parser.add_argument('--epochs', action='store', type=int, default=100, help='output_size', required=False) 
+    parser.add_argument('--epochs', action='store', type=int, default=10, help='output_size', required=False) 
     args = parser.parse_args()
     device = (
     "cuda"
@@ -107,41 +107,70 @@ if __name__=="__main__":
             print('Epoch:', '%04d' % (epoch + 1), 'loss =', '{:.6f}'.format(loss))
             
             
-    #inference
-    for kk in range(2):
-        poss = init_positions = torch.from_numpy(np.array([[0.,0.,0.,0.]], dtype=np.float32)).to(device)
-        states = []
-        for pos in poss:
-            state_dict = {}
-            for loc, val in zip(['x', 'y', 'z', 't'], pos):
-                state_dict[loc] = val
-            states.append(state_dict)
-        for state_dict in states:
-            Testbed = State(**state_dict)
-        result =[]
-        h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
-        c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
-        x = []
-        t = []
-        at = 0
-        for i in range(50):
-            predict, h, c = model(poss, h, c)
-            poss += predict
-            print(poss, predict)
-            dt = predict[0,-1]
-            predict = predict[0, 0:-1]
-            predict = predict.tolist()
-            act_dict={}
-            for loc, val in zip(['dx','dy','dz'], predict):
-                act_dict[loc]=float(val)
-            action = Action(**act_dict)
-            Testbed.act(action, dt)
-            x.append(Testbed.to_list()[0])
-            dt = dt.cpu()
-            dt = dt.detach().numpy()
-            t.append(at + dt)
-            at += dt
-            result.append(predict)
-        # print(result)
-        plt.plot(t,x)
-        plt.savefig('result.png')
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# 가정: State, Action, model, args.batch_size, args.hidden_size, device가 정의되어 있다고 가정합니다.
+
+for kk in range(2):
+    poss = init_positions = torch.from_numpy(np.array([[0., 0., 0., 0.]], dtype=np.float32)).to(device)
+    states = []
+    for pos in poss:
+        state_dict = {}
+        for loc, val in zip(['x', 'y', 'z', 't'], pos):
+            state_dict[loc] = val
+        states.append(state_dict)
+    for state_dict in states:
+        Testbed = State(**state_dict)
+    result = []
+    h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
+    c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
+    x = []
+    y = []
+    z = []
+    t = []
+    at = 0
+    for i in range(50):
+        predict, h, c = model(poss, h, c)
+        poss += predict
+        print(poss, predict)
+        dt = predict[0, -1]
+        predict = predict[0, 0:-1]
+        predict = predict.tolist()
+        act_dict = {}
+        for loc, val in zip(['dx', 'dy', 'dz'], predict):
+            act_dict[loc] = float(val)
+        action = Action(**act_dict)
+        Testbed.act(action, dt)
+        state_list = Testbed.to_list()
+        x.append(state_list[0])
+        y.append(state_list[1])
+        z.append(state_list[2])
+        dt = dt.cpu()
+        dt = dt.detach().numpy()
+        t.append(at + dt)
+        at += dt
+        result.append(predict)
+
+    # 3D 플롯 설정 및 그리기
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(x, y, z, label='3D trajectory')
+    ax.set_xlabel('X axis')
+    ax.set_ylabel('Y axis')
+    ax.set_zlabel('Z axis')
+    ax.legend()
+    plt.savefig(f'result_3d_{kk}.png')
+    plt.show()
+
+    # t에 따른 x, y, z 값도 2D 플롯으로 각각 저장
+    plt.figure()
+    plt.plot(t, x, label='x')
+    plt.plot(t, y, label='y')
+    plt.plot(t, z, label='z')
+    plt.xlabel('Time')
+    plt.ylabel('Values')
+    plt.legend()
+    plt.savefig(f'result_2d_{kk}.png')
+    plt.show()

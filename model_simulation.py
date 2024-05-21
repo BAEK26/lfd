@@ -1,4 +1,3 @@
-import csv
 import torch
 import argparse
 import datetime
@@ -71,10 +70,8 @@ if __name__=="__main__":
     #train data
     # position, 
     actions_dataset = [] 
-    with open(f'robot_data_{i}.csv', 'r') as csvfile:
-        fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+    for i in range(10):
+        actions_dataset.append(generate_random_scenario(True))
     
     # print('actions',actions_dataset[0][0])
     # print('pos',actions_dataset[0][1])

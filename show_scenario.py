@@ -64,7 +64,7 @@ def get_robot_state():
     return coordinates[1], angles[1]
 
 # Open a CSV file to save the data
-for i in range(10):
+for i in range(5):
     with open(f'robot_data_{i}.csv', 'w', newline='') as csvfile:
         fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -100,7 +100,7 @@ for i in range(10):
 
         except KeyboardInterrupt:
             # Stop recording on user interrupt
-            print("Data recording stopped.")
+            print(f"{i} Data recording stopped.")
 
 
 arm.disconnect()

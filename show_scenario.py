@@ -65,7 +65,8 @@ def get_robot_state():
 
 # Open a CSV file to save the data
 for i in range(5):
-    with open(f'robot_data_{i}.csv', 'w', newline='') as csvfile:
+    datafile_path = os.path.join('data', f'robot_data_{i}.csv')
+    with open(datafile_path, 'w', newline='') as csvfile:
         fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()

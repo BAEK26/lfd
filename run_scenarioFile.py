@@ -15,6 +15,7 @@ import csv
 import sys
 import time
 import params
+import argparse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
@@ -45,6 +46,10 @@ arm = XArmAPI(ip)
 arm.motion_enable(enable=True)
 arm.set_mode(0)
 arm.set_state(state=0)
+parser = argparse.ArgumentParser()
+parser.add_argument('--file_name', action='store', type=str, help='file to run xArm6', required=True)
+args = parser.parse_args()
+
 
 print('=' * 50)
 print('version:', arm.get_version())
@@ -64,22 +69,27 @@ def get_robot_state():
     angles = arm.get_servo_angle()      # Replace with actual method to get joint angles
     return coordinates[1], angles[1]
 coordinates, angles = get_robot_state()
-# Open a CSV file to save the data
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
-print(arm.get_position(), arm.get_position(is_radian=False))
-angles[0] -= 1
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
-print(arm.get_position(), arm.get_position(is_radian=False))
-angles[0] -= 1
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
-print(arm.get_position(), arm.get_position(is_radian=False))
-angles[0] -= 1
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
-angles[0] -= 1
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
-angles[0] -= 1
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
-angles[0] -= 1
-arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
+
+file_name = args.file_name
+file_path = os.path.join('scenarios', file_name if '.csv' in file_name[-4:] else file_name+'.csv')
+data=[]
+
+# Open a CSV file to load the data
+with open(file_path, 'r') as csvfile:
+    fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+
+        data.append({k:float(v) for k, v in row.items()})
+
+
+for point in data:
+    angles = [point['joint1'], point['joint2'], point['joint3'], point['joint4'], point['joint5'], point['joint6']]
+    arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
+    # print(point)
+coordinates, angles = get_robot_state()
+print(coordinates, angles)
+# arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
+# print(arm.get_position(), arm.get_position(is_radian=False))
 
 arm.disconnect()

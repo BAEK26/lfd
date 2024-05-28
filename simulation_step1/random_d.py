@@ -123,7 +123,11 @@ def generate_test_scenario(save=None) -> list:
 
 
 if __name__ == "__main__":
-    generate_random_scenario(True)
+    
+    actions , positions = generate_random_scenario(False)
+    for act, pos in zip(actions, positions):
+        print('act: ', act, 'pos: ', pos)
+    exit(0)
     current = State(**{"x":0, "y":0, "z": 0, "t": 0.})
     actions = []
     times = []

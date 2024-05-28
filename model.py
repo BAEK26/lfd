@@ -1,8 +1,10 @@
+import os
+import csv
 import torch
 import argparse
 import datetime
 import data_utils
-from random_d import *
+from simulation_step1.random_d import *
 from tqdm import tqdm
 import torch.nn as nn
 from torch.nn import functional as F
@@ -27,37 +29,23 @@ class SimpleLearner(nn.Module):
         X = X.unsqueeze(0)
         outputs, (hidden, cell) = self.lstm(X, (hidden, cell))
         outputs = outputs[-1]  # 최종 예측 Hidden Layer
-        # print("Shape of outputs:", outputs.shape)
-        # print("Shape of self.W:", self.W.shape)
 
-        # model = torch.mm(outputs, self.W) + self.b  # 최종 예측 최종 출력 층
         model = self.final(outputs)
-        # model = self.activateion(model)
+
         return model, hidden, cell
 
     def initHidden(self):
         return torch.zeros(1, self.hidden_size)        
 
 
-        #     a_hat, is_pad_hat, (mu, logvar) = self.model(qpos, image, env_state, actions, is_pad)
-        #     total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
-        #     loss_dict = dict()
-        #     all_l1 = F.l1_loss(actions, a_hat, reduction='none') 
-        # #MSELoss(size_average=None, reduce=None, reduction='mean')
-        # #         loss = nn.MSELoss()
-        # # input = torch.randn(3, 5, requires_grad=True)
-        # # target = torch.randn(3, 5)
-        # # output = loss(input, target)
-        # # output.backward()
-        #     l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
-        #     loss_dict['l1'] = l1
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidden_size', action='store', type=int, default=64, help='hidden_size', required=False)
     parser.add_argument('--input_size', action='store', type=int, default=7, help='input_size', required=False) #joint1~6, t
     parser.add_argument('--output_size', action='store', type=int, default=7, help='output_size', required=False) #joint1~6, dt
     parser.add_argument('--batch_size', action='store', type=int, default=1, help='output_size', required=False) #chunk?
-    parser.add_argument('--epochs', action='store', type=int, default=10, help='output_size', required=False) 
+    parser.add_argument('--epochs', action='store', type=int, default=10, help='output_size', required=False)
+    parser.add_argument('--file_name', action='store', type=str, default='test', help="model's path will be generated in this file", required=False) 
     args = parser.parse_args()
     device = (
     "cuda"
@@ -69,18 +57,13 @@ if __name__=="__main__":
     print(f"Using {device} device")
 
     #train data
-    # position, 
     actions_dataset = data_utils.load_dataset_list()
     
-    # print('actions',actions_dataset[0][0])
-    # print('pos',actions_dataset[0][1])
 
     #train
     model = SimpleLearner(args).to(device)
-    # criterion = nn.L1Loss()#MSEloss
-    criterion = nn.MSELoss()#MSEloss
-    # optimizer = torch.optim.Adam(model.parameters(), lr=1.5e-1)
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    criterion = nn.MSELoss()#MSEloss, nn.L1Loss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1.5e-1) #torch.optim.SGD(model.parameters(), lr=0.1)
     num_epochs = args.epochs
     torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(num_epochs)):
@@ -111,22 +94,23 @@ if __name__=="__main__":
     # inference
 
     for kk in range(1):
-        poss = init_positions = torch.from_numpy(np.array([[112.963614, 3.94682, 15.685751, -8.833004, -75.773611, 3.087154, 0.]], dtype=np.float32)).to(device)
+        inference_data=[]
+        poss = init_positions = torch.from_numpy(np.array([[68.037478, 3.952549, 13.796079, -32.871104, -73.965471, 1.472158, 0.0]], dtype=np.float32)).to(device)
         states = []
         result = []
         h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
         c = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)
         j1, j2, j3, j4, j5, j6, t = [], [], [], [], [], [], []
         at = 0
-        for i in range(50):
+        for i in range(60):
             predict, h, c = model(poss, h, c)
             poss = predict
             print(poss, predict)
             dt = predict[0, -1]
             predict = predict[0, 0:-1]
-            predict = predict.tolist()
             act_dict = {}
-            state_list = predict.to_list()
+            state_list = predict.tolist()
+            inference_data.append(state_list[:6])
             j1.append(state_list[0])
             j2.append(state_list[1])
             j3.append(state_list[2])
@@ -140,26 +124,44 @@ if __name__=="__main__":
             result.append(predict)
 
         # 3D 플롯 설정 및 그리기
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot(j1, j2, j3, label='3D trajectory')
-        ax.set_xlabel('X axis')
-        ax.set_ylabel('Y axis')
-        ax.set_zlabel('Z axis')
-        ax.legend()
-        plt.savefig(f'result_3d_{kk}.png')
-        plt.show()
+        visualize=False
+        if visualize:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot(j4, j5, j6, label='3D trajectory')
+            ax.set_xlabel('X axis')
+            ax.set_ylabel('Y axis')
+            ax.set_zlabel('Z axis')
+            ax.legend()
+            plt.savefig(f'result_3d_{kk}.png')
+            plt.show()
 
-        # t에 따른 x, y, z 값도 2D 플롯으로 각각 저장
-        plt.figure()
-        plt.plot(t, j1, label='x')
-        plt.plot(t, j2, label='y')
-        plt.plot(t, j3, label='z')
-        plt.xlabel('Time')
-        plt.ylabel('Values')
-        plt.legend()
-        plt.savefig(f'result_2d_{kk}.png')
-        plt.show()
+            # t에 따른 x, y, z 값도 2D 플롯으로 각각 저장
+            plt.figure()
+            plt.plot(t, j4, label='x')
+            plt.plot(t, j5, label='y')
+            plt.plot(t, j6, label='z')
+            plt.xlabel('Time')
+            plt.ylabel('Values')
+            plt.legend()
+            plt.savefig(f'result_2d_{kk}.png')
+            plt.show()
+
+        # print(inference_data)
+        testfile = os.path.join("scenarios", args.file_name+'.csv')
+        with open(testfile, 'w', newline='') as csvfile:
+            fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for point in inference_data:
+                data = {k:0. for k in fieldnames}
+                data['joint1'] = point[0]
+                data['joint2'] = point[1]
+                data['joint3'] = point[2]
+                data['joint4'] = point[3]
+                data['joint5'] = point[4]
+                data['joint6'] = point[5]
+                writer.writerow(data)
 
     #eval
     #test data

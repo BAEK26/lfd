@@ -38,18 +38,6 @@ class SimpleLearner(nn.Module):
         return torch.zeros(1, self.hidden_size)        
 
 
-        #     a_hat, is_pad_hat, (mu, logvar) = self.model(qpos, image, env_state, actions, is_pad)
-        #     total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
-        #     loss_dict = dict()
-        #     all_l1 = F.l1_loss(actions, a_hat, reduction='none') 
-        # #MSELoss(size_average=None, reduce=None, reduction='mean')
-        # #         loss = nn.MSELoss()
-        # # input = torch.randn(3, 5, requires_grad=True)
-        # # target = torch.randn(3, 5)
-        # # output = loss(input, target)
-        # # output.backward()
-        #     l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
-        #     loss_dict['l1'] = l1
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidden_size', action='store', type=int, default=64, help='hidden_size', required=False)

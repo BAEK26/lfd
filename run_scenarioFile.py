@@ -85,7 +85,7 @@ with open(file_path, 'r') as csvfile:
 
 for point in data:
     angles = [point['joint1'], point['joint2'], point['joint3'], point['joint4'], point['joint5'], point['joint6']]
-    arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)
+    arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=0.0)
     # print(point)
 coordinates, angles = get_robot_state()
 print(coordinates, angles)

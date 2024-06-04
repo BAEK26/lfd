@@ -1,14 +1,16 @@
 import os
 import csv
 import torch
+from glob import glob
 def load_dataset_list() -> list:
     actions_dataset = []
-    for i in range(5):
+    files = glob('data\*')
+    for file in files:
         scenario = []
         actions = []
         positions = []
-        data_path = os.path.join('data', f'robot_data_{i}.csv')
-        with open(data_path, 'r') as csvfile:
+        data_path = os.path.join('data', file)
+        with open(file, 'r') as csvfile:
             fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
             t0 = None
             reader = csv.DictReader(csvfile)

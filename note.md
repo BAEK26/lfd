@@ -4,3 +4,5 @@ next step
 - [ ] cuda 환경설정   
 - [x] xarm 스튜디오 없이 cli로 관리하기   
 - [ ] list 데이터셋 형태 -> torch dataset으로 만들기
+- [ ] .pt파일 만들기 (best, last)
+- [ ] LSTM 구조바꾸기

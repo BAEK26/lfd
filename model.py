@@ -4,16 +4,15 @@ import torch
 import argparse
 import datetime
 import data_utils
-from simulation_step1.random_d import *
 from tqdm import tqdm
 import torch.nn as nn
-from torch.nn import functional as F
+import numpy as np
+
 dtype = torch.float
 #lstm
 class SimpleLearner(nn.Module): 
     def __init__(self, args):
         super(SimpleLearner, self).__init__()
-        self.state = State(**{"x":0, "y":0, "z": 0, "t": 0})
         self.hidden_size = args.hidden_size
 
         self.lstm = nn.LSTM(input_size=args.input_size, hidden_size=args.hidden_size, dropout=0.2)
@@ -95,7 +94,7 @@ if __name__=="__main__":
 
     for kk in range(1):
         inference_data=[]
-        poss = init_positions = torch.from_numpy(np.array([[68.037478, 3.952549, 13.796079, -32.871104, -73.965471, 1.472158, 0.0]], dtype=np.float32)).to(device)
+        poss = init_positions = torch.from_numpy(np.array([[99.466791,28.341529,23.782218,-2.526858,-96.803282,-11.766376, 0.0]], dtype=np.float32)).to(device)
         states = []
         result = []
         h = torch.zeros(1, args.batch_size, args.hidden_size, requires_grad=True).to(device)

@@ -36,7 +36,7 @@ class SimpleLearner(nn.Module):
     def initHidden(self):
         return torch.zeros(1, self.hidden_size)        
 
-
+print('hello')
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--hidden_size', action='store', type=int, default=64, help='hidden_size', required=False)

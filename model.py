@@ -4,8 +4,10 @@ import torch
 import argparse
 import datetime
 import data_utils
+from data_utils import XArmDataset
 from tqdm import tqdm
 import torch.nn as nn
+from torch.utils.data import DataLoader
 import numpy as np
 
 dtype = torch.float
@@ -25,7 +27,8 @@ class SimpleLearner(nn.Module):
     def forward(self,X, hidden, cell):
         
         # Add batch dimension to input
-        X = X.unsqueeze(0)
+        X = X.unsqueeze(1)
+        # X = X.unsqueeze(0)
         outputs, (hidden, cell) = self.lstm(X, (hidden, cell))
         outputs = outputs[-1]  # 최종 예측 Hidden Layer
 
@@ -33,8 +36,10 @@ class SimpleLearner(nn.Module):
 
         return model, hidden, cell
 
-    def initHidden(self):
-        return torch.zeros(1, self.hidden_size)        
+    def init_hidden_cell(self, batch_size):
+        h = torch.zeros(1, batch_size, self.hidden_size)        
+        c = torch.zeros(1, batch_size, self.hidden_size)        
+        return h, c
 
 print('hello')
 if __name__=="__main__":
@@ -56,7 +61,7 @@ if __name__=="__main__":
     print(f"Using {device} device")
 
     #train data
-    actions_dataset = data_utils.load_dataset_list()
+    actions_dataset = XArmDataset(path='data', sequence_length=5)
     
 
     #train
@@ -64,6 +69,23 @@ if __name__=="__main__":
     criterion = nn.MSELoss()#MSEloss, nn.L1Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1.5e-1) #torch.optim.SGD(model.parameters(), lr=0.1)
     num_epochs = args.epochs
+
+    train_loader = DataLoader(actions_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+    for epoch in range(num_epochs):
+        for coordinates, next_coordinates in train_loader:
+            hidden, cell = model.init_hidden_cell(args.batch_size)
+            hidden = hidden.to(device)
+            cell = cell.to(device)
+            coordinates, next_coordinates = coordinates.to(device), next_coordinates.to(device)
+            
+            optimizer.zero_grad()
+            output, hidden, cell = model(coordinates, hidden, cell)
+            loss = criterion(output, next_coordinates)
+            loss.backward()
+            optimizer.step()
+
+    print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+
     torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(num_epochs)):
         for actions, pos in actions_dataset:

@@ -2,15 +2,41 @@ import os
 import csv
 import torch
 from glob import glob
+import pandas as pd
+import numpy as np
 
 class XArmDataset(torch.utils.data.Dataset):
-    def __init__(self, data):
-        super.__init__()
-        self.data = data
+    def __init__(self, path, sequence_length = 5):
+        super(XArmDataset, self).__init__()
+        self.sequence_length = sequence_length
+        self.coordinates = []
+        self.next_coordinates = []
+        self.load_dataset(path)
+
+    def load_dataset(self, path):
+        assert os.path.isdir(path)
+        csv_paths = glob(os.path.join(path,"*.csv"))
+        for csv_path in csv_paths:
+            scenario = pd.read_csv(csv_path)
+
+            coordinates = []
+            next_coordinates = []
+            for i in range(len(scenario) - self.sequence_length):
+                coordinates.append(scenario.iloc[i:i+self.sequence_length][['joint1','joint2','joint3','joint4','joint5','joint6', 'timestamp']].values)
+                next_coordinates.append(scenario.iloc[i+self.sequence_length][['joint1','joint2','joint3','joint4','joint5','joint6', 'timestamp']].values)
+
+
+            #timestamp,x,y,z,roll,pitch,yaw,joint1,joint2,joint3,joint4,joint5,joint6
+            self.coordinates.extend(np.array(coordinates))
+            self.next_coordinates.extend(np.array(next_coordinates))
+            #TODO timestamp -> delta
+        self.coordinates = torch.tensor(self.coordinates, dtype=torch.float32)
+        self.next_coordinates = torch.tensor(self.next_coordinates, dtype=torch.float32)
+
     def __len__(self):
-        return 0
+        return len(self.coordinates) - self.sequence_length
     def __getitem__(self, idx):
-        return None
+        return self.coordinates[idx], self.next_coordinates[idx]
 
 def load_dataset() -> XArmDataset:
     actions_dataset = []

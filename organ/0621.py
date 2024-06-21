@@ -579,6 +579,14 @@ class RobotMain(object):
         coordinates = self.putDownBottle(i, coordinates)
         self._initial_position()
 
+        # unless execute Lid process...
+        # back to ready position
+        coordinates = self._get_coordinates(i)
+        coordinates[2] += 40
+        coordinates = self.set_coordinates(i, coordinates)
+
+        code = self._arm.set_position(*coordinates, speed=self._tcp_speed, mvacc=self._tcp_acc, radius=0.0, wait=True)
+
         return coordinates
 
 
@@ -776,13 +784,6 @@ class RobotMain(object):
             # 8.2 closeLid
 
             # final safe zone
-            self._arm.set_position(
-                    x - 10, y, z, r, p, w ,
-                    speed=self._tcp_speed,
-                    mvacc=self._tcp_acc,
-                    radius=0.0,
-                    wait=True
-                )
             self._initial_position()
 
         except Exception as e:

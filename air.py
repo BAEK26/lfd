@@ -7,6 +7,8 @@ import torch.optim as optim
 import torch.utils.data as data
 from glob import glob
 import os
+from time import time
+import csv
 
 df = pd.read_csv('data/robot_data_0.csv')
 timeseries = df[["joint1","joint2","joint3","joint4","joint5","joint6"]].values.astype('float32')
@@ -33,9 +35,10 @@ def create_dataset(dataset, lookback):
         target = dataset[i+1:i+lookback+1]
         X.append(feature)
         y.append(target)
-    return torch.tensor(X), torch.tensor(y)
+    return torch.tensor(np.array(X)), torch.tensor(np.array(y))
 
-lookback = 5
+lookback = 10
+batch_size = 8
 X_train, y_train = create_dataset(train, lookback=lookback)
 X_test, y_test = create_dataset(test, lookback=lookback)
 
@@ -52,7 +55,7 @@ class AirModel(nn.Module):
 model = AirModel()
 optimizer = optim.Adam(model.parameters())
 loss_fn = nn.MSELoss()
-loader = data.DataLoader(data.TensorDataset(X_train, y_train), shuffle=True, batch_size=8)
+loader = data.DataLoader(data.TensorDataset(X_train, y_train), shuffle=True, batch_size=batch_size)
 
 n_epochs = 1000
 for epoch in range(n_epochs):
@@ -73,19 +76,48 @@ for epoch in range(n_epochs):
         y_pred = model(X_test)
         test_rmse = np.sqrt(loss_fn(y_pred, y_test))
     print("Epoch %d: train RMSE %.4f, test RMSE %.4f" % (epoch, train_rmse, test_rmse))
-pd.DataFrame(timeseries).plot()
-plt.show()
+test = False
+if test:
+    with torch.no_grad():
+        # shift train predictions for plotting
+        train_plot = np.ones_like(timeseries) * np.nan
+        # y_pred = model(X_train)
+        # y_pred = y_pred[:, -1, :]
+        train_plot[lookback:train_size] = model(X_train)[:, -1, :]
+        # shift test predictions for plotting
+        test_plot = np.ones_like(timeseries) * np.nan
+        test_plot[train_size+lookback:len(timeseries)] = model(X_test)[:, -1, :]
+    # plot
+    plt.plot(timeseries, c='b')
+    plt.plot(train_plot, c='r')
+    plt.plot(test_plot, c='g')
+    plt.show()
+# demonstraiton
+# using the model to predict the next 100 steps from t0 and show the plot.
+# t0 should be 32type tensor with shape [1, 10, 6]
+timesteps = 40
+init = 2
+t0 = torch.tensor(np.array([93.483335,26.31005,33.65004,-5.537121,-89.355461,-4.383528]), dtype=torch.float32).repeat(init).reshape(1, init, 6)
+show_plot = np.ones((timesteps+init, 6)) * np.nan
 with torch.no_grad():
-    # shift train predictions for plotting
-    train_plot = np.ones_like(timeseries) * np.nan
-    y_pred = model(X_train)
-    y_pred = y_pred[:, -1, :]
-    train_plot[lookback:train_size] = model(X_train)[:, -1, :]
-    # shift test predictions for plotting
-    test_plot = np.ones_like(timeseries) * np.nan
-    test_plot[train_size+lookback:len(timeseries)] = model(X_test)[:, -1, :]
-# plot
-plt.plot(timeseries, c='b')
-plt.plot(train_plot, c='r')
-plt.plot(test_plot, c='g')
-plt.show()
+    for i in range(timesteps):
+        pred = model(t0)
+        # take t0 and prediction so that t0 gets bigger.
+        t0 = torch.cat([t0, pred[:, -1, :].reshape(1, 1, 6)], dim=1)
+        show_plot[init + i, :] = pred[:, -1, :].numpy()
+    
+plt.plot(show_plot) # plot the data
+plt.show()  # show the plot
+
+print()
+# write t0 data to csv file
+# t0 6 points refers to joint1, joint2, joint3, joint4, joint5, joint6.
+testfile = os.path.join("scenarios", "parallel"+'.csv')
+with open(testfile, 'w', newline='') as csvfile:
+    fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for i in range(timesteps+init):
+        if show_plot[i, 0] is np.nan:
+            continue
+        writer.writerow({'timestamp': i, 'x': 0, 'y': 0, 'z': 0, 'roll': 0, 'pitch': 0, 'yaw': 0, 'joint1': show_plot[i, 0], 'joint2': show_plot[i, 1], 'joint3': show_plot[i, 2], 'joint4': show_plot[i, 3], 'joint5': show_plot[i, 4], 'joint6': show_plot[i, 5]})

@@ -18,7 +18,7 @@ def interpolate_points(points):
             interpolated_points = np.append(interpolated_points, segment_points, axis=1)
 
     return interpolated_points
-file_path = 'scenarios/one_scenario.csv'
+file_path = 'scenarios/xyz.csv'
 df = pd.read_csv(file_path)
 points = df
 print(points)
@@ -27,4 +27,4 @@ df = pd.DataFrame(interpolated_points)
 df.columns = ['timestamp', 'x','y','z','roll','pitch','yaw','joint1','joint2','joint3','joint4','joint5','joint6']
 print(df)
 
-df.to_csv('scenarios/one_scenario_interpolated.csv', index=False)
+df.to_csv('scenarios/xyz_interpolated.csv', index=False)

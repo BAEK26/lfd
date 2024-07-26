@@ -67,7 +67,9 @@ def get_robot_state():
 # Turn on manual mode before recording
 arm.set_mode(2)
 arm.set_state(0)
-
+arm.set_suction_cup(True) #열림 open gripper
+time.sleep(3)
+arm.set_suction_cup(False) #닫힘 close gripper
 
 # Open a CSV file to save the data
 for i in range(50):

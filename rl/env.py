@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from arm import RobotArm
+from arm import RobotArmController
 
 class KalmanFilter:
     def __init__(self, state_dim):
@@ -25,32 +25,22 @@ class KalmanFilter:
 class RobotEnv(gym.Env):
     def __init__(self):
         super(RobotEnv, self).__init__()
-        self.robot_arm = RobotArm()
-        self.kalman_filter = KalmanFilter(state_dim=6)
+        self.robot = RobotArmController()
+        self.kalman_filter = KalmanFilter(6)
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(6,))
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reset(self):
-        self.state = np.zeros(6)  # 초기 상태
+        self.state = np.random.uniform(low=-1, high=1, size=6)
         return self.state
 
     def step(self, action):
-        # 칼만 필터 적용 전 상태 업데이트
         self.kalman_filter.predict()
-        filtered_state = self.kalman_filter.update(self.robot_arm.get_state())
+        filtered_state = self.kalman_filter.update(self.robot.get_state())
+        next_state = self.robot.move_arm(action)
+        reward = -np.linalg.norm(filtered_state)
+        done = reward > -0.1
+        return next_state, reward, done, {}
 
-        # 로봇 암의 상태 업데이트 및 액션 적용
-        next_state = self.robot_arm.step(action)
-        reward = self._calculate_reward(next_state)
-        done = self._is_done(next_state)
-
-        return filtered_state, reward, done, {}
-
-    def _calculate_reward(self, state):
-        goal = np.array([0, 0, 0, 0, 0, 0])  # 목표 관절 각도
-        distance_to_goal = np.linalg.norm(state - goal)
-        reward = -distance_to_goal  # 목표와 가까울수록 보상
-        return reward
-
-    def _is_done(self, state):
-        return np.linalg.norm(state - np.array([0, 0, 0, 0, 0, 0])) < 0.05
+    def render(self, mode="human"):
+        pass

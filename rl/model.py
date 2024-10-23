@@ -13,6 +13,12 @@ class TrajectoryModel(nn.Module):
         output = self.fc(lstm_out)
         return output
 
+# 2차 비용 함수 적용
+def quadratic_cost(success_demo, failure_demo, current_trajectory):
+    success_cost = ((current_trajectory - success_demo.mean(axis=0))**2).sum()
+    failure_cost = ((failure_demo - current_trajectory)**2).sum()
+    return failure_cost - success_cost
+
 # PPO 모델 정의
 class RobotPPOModel:
     def __init__(self, env):

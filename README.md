@@ -1,17 +1,17 @@
 # lfd
 
-## supervised learning
+## Supervised Learning
 manual 모드로 xArm을 직접 시연하여 얻은 데이터를 학습합니다.
 
 ### 실행방법
-데이터셋 구축
+**데이터셋 구축**
 ```shell
 python show_scenario.py --file_name
 ```
 n번간 시연과 Ctrl+c를 반복하여
 n개의 시나리오 파일(data/robot_data_{i}.csv)을 만듦 (i : 0 ~ n-1)
 
-모델 학습
+**모델 학습**
 ```shell
 air.py --file_name test_scenario #생성되는 테스트 시나리오 파일명
         --model_path path/to/model.pt # 모델을 불러옴. 쓰지 않으면 새로 만듦.
@@ -27,11 +27,12 @@ xArm 확인
 python run_scenarioFile.py --file_name test_scenario # 실행하고자하는 시나리오 파일명
 ```
 
-deprecated   
-~~모델 학습~~
-```shell
-#bash train.sh
-```
+> deprecated   
+> ~~모델 학습~~
+>```shell
+>#bash train.sh
+>```
+
 ### Postprocess on Scenarios
 posprocess/*.py에 대한 설명.
 

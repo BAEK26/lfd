@@ -22,7 +22,7 @@ air.py --file_name test_scenario #생성되는 테스트 시나리오 파일명
 
 학습 후 scenarios/test_scenario.csv가 생성됨.
 
-xArm 확인
+**xArm Robot Arm 시연**
 ```shell
 python run_scenarioFile.py --file_name test_scenario # 실행하고자하는 시나리오 파일명
 ```
@@ -37,13 +37,13 @@ python run_scenarioFile.py --file_name test_scenario # 실행하고자하는 시
 posprocess/*.py에 대한 설명.
 
 #### Overview
-모델이 만든 시나리오.csv를 변형하는 소스코드.
+모델이 만든 {시나리오.csv}를 변형하는 소스코드.
 
 #### 실행방법
 ```shell
 python postprocess/filter_sig.py
 ```
-scenarios/에 새로운 파일이 생성됨.
+scenarios/*-sig.csv 새로운 파일이 생성됨.
 
 ## Reinforcement Learning
 WIP

@@ -2,13 +2,11 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 from pykalman import KalmanFilter
-from trajectory_processing import process_trajectory
+import sys
 
 # 파일 경로
-filepath = 'D:\\Jeong-eun\\LfD_DMPs\\test.csv'
-processed_data = process_trajectory(filepath)
-print(processed_data)
-
+sys.path.append('..\LfD_DMPs')  # 상위 디렉토리로 이동 후 LfD_DMPs 폴더로 경로 지정
+filepath = './test.csv'
 
 def load_data(filepath):
     """ CSV 파일로부터 데이터 로드 """
@@ -24,15 +22,15 @@ def interpolate_data(data, num_points=500):
 
 def apply_kalman_filter(data):
     """ 칼만 필터 적용 """
-    initial_state = data.iloc[0]
+    initial_state = data.iloc[0] # 초기 상태 추정값. 여기선 데이터 첫번째 값을 초기상태로 설정함.
     observation_covariance = np.diag([1, 1, 1]) ** 2  # 예: 측정 노이즈
-    transition_covariance = np.diag([0.1, 0.1, 0.1]) ** 2  # 예: 추정 노이즈
+    transition_covariance = np.diag([0.1, 0.1, 0.1]) ** 2  # 예: 추정 노이즈 / 전이 노이즈 공분산 / 필터가 예측값에만 의존
     transition = np.eye(3)  # 상태 전이 행렬
 
     kf = KalmanFilter(initial_state_mean=initial_state,
-                      initial_state_covariance=observation_covariance,
-                      observation_covariance=observation_covariance,
-                      transition_covariance=transition_covariance,
+                      initial_state_covariance=observation_covariance, #초기 상태 공분산 (초기상태 불확실성을 의미/ 클수록 덜신뢰)
+                      observation_covariance=observation_covariance, # 데이터 노이즈 수준에 맞게 조정하기 (높이면 데이터 신뢰도 떨어짐, 예측에 의존)
+                      transition_covariance=transition_covariance, 
                       transition_matrices=transition)
 
     states_pred = kf.smooth(data)[0]
@@ -49,3 +47,11 @@ if __name__ == "__main__":
     filepath = './test.csv'
     processed_data = process_trajectory(filepath)
     print(processed_data.head())
+
+    # 처리된 데이터 출력
+    print(processed_data.head())
+    
+    # kalman1.csv로 저장
+    output_filepath = './kalman1.csv'
+    processed_data.to_csv(output_filepath, index=True)  # 인덱스 포함 저장
+    print(f"Processed data saved to {output_filepath}")

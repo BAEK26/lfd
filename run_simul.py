@@ -88,6 +88,12 @@ for point in data:
     arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=100.0)
     # print(point)
 
+# reverse the order of the data
+data.reverse()
+for point in data:
+    angles = [point['joint1'], point['joint2'], point['joint3'], point['joint4'], point['joint5'], point['joint6']]
+    arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=100.0)
+    # print(point)
 
 
 coordinates, angles = get_robot_state()

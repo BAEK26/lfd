@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 # 1. 데이터 로드 (상대경로 사용)
-data = pd.read_csv('./data/relative_sampled_neo_show_scenario.csv')  # 상대경로로 파일 로드
+data = pd.read_csv('./data/test.csv')  # 상대경로로 파일 로드
 
 # 2. 중복된 timestamp 처리 (평균값 사용)
 data_grouped = data.groupby('timestamp').mean().reset_index()
@@ -71,5 +71,26 @@ plt.tight_layout()
 plt.show()
 
 # 8. 결과 저장
-interpolated_data_clean.to_csv('interpolated_trajectory_clean22.csv', index=False)
+interpolated_data_clean.to_csv('test_trajectory.csv', index=False)
 print("Interpolated trajectory saved as 'interpolated_trajectory_clean.csv'")
+
+# .traj 파일 저장
+def save_as_traj_file(filename, timestamps, positions, joints):
+    with open(filename, 'w') as f:
+        f.write('# Timestamp, X, Y, Z, Roll, Pitch, Yaw, Joint1, Joint2, Joint3, Joint4, Joint5, Joint6\n')
+        for t, pos, joint in zip(timestamps, positions, joints):
+            pos_str = ', '.join(f'{p:.6f}' for p in pos)  # 포지션 데이터 포맷
+            joint_str = ', '.join(f'{j:.6f}' for j in joint)  # 조인트 데이터 포맷
+            f.write(f'{t}, {pos_str}, {joint_str}\n')
+
+# 파일 저장
+traj_filename = './data/interpolated_trajectory.traj'
+save_as_traj_file(
+    traj_filename, 
+    fine_timestamps_clean, 
+    interpolated_positions_clean, 
+    interpolated_joints_clean
+)
+
+print(f"Trajectory data saved as '{traj_filename}'")
+

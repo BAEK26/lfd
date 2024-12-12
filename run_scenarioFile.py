@@ -44,7 +44,7 @@ Just for test example
 ip = "192.168.1.194"
 arm = XArmAPI(ip)
 arm.motion_enable(enable=True)
-arm.set_mode(0)
+arm.set_mode(1)
 arm.set_state(state=0)
 parser = argparse.ArgumentParser()
 parser.add_argument('--file_name', action='store', type=str, help='file to run xArm6', required=True)
@@ -85,8 +85,9 @@ with open(file_path, 'r') as csvfile:
 arm.set_suction_cup(False)
 for point in data:
     angles = [point['joint1'], point['joint2'], point['joint3'], point['joint4'], point['joint5'], point['joint6']]
-    arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=100.0)
-    # print(point)
+    # arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=100.0)
+    arm.set_servo_angle_j(angles=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=100.0)
+    time.sleep(0.001)
 coordinates, angles = get_robot_state()
 print(coordinates, angles)
 # arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)

@@ -20,8 +20,8 @@ def sample_data(filepath, output_filepath, time_interval=0.1):
 
 
 if __name__ == "__main__":
-    input_filepath = './neo_show_scenario.csv'
-    output_filepath = './sampled_neo_show_scenario.csv'
+    input_filepath = r'data\relative_neo_show_scenario.csv'
+    output_filepath = r'data\test.csv'
     
     # 0.1초 간격으로 샘플링
     sampled_data = sample_data(input_filepath, output_filepath, time_interval=0.1)

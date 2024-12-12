@@ -71,7 +71,7 @@ def get_robot_state():
 coordinates, angles = get_robot_state()
 
 file_name = args.file_name
-file_path = os.path.join('rl', file_name if '.csv' in file_name[-4:] else file_name+'.csv')
+file_path = os.path.join('data', file_name if '.csv' in file_name[-4:] else file_name+'.csv')
 data=[]
 
 # Open a CSV file to load the data

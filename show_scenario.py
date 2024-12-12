@@ -67,26 +67,27 @@ def get_robot_state():
 # Turn on manual mode before recording
 arm.set_mode(2)
 arm.set_state(0)
-arm.set_suction_cup(True) #열림 open gripper
-time.sleep(3)
+#arm.set_suction_cup(True) #열림 open gripper
+#time.sleep(3)
 arm.set_suction_cup(False) #닫힘 close gripper
 
 # Open a CSV file to save the data
-for i in range(50):
+for i in range(1):
     arm.set_mode(2)
-    datafile_path = os.path.join('data', f'robot_data_{i}.csv')
+    datafile_path = os.path.join('data', f'neo_show_scenario.csv')
     with open(datafile_path, 'w', newline='') as csvfile:
         fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         
         try:
+            start_time = time.time()
             while True:
                 # Get current robot state
                 coordinates, angles = get_robot_state()
                 
                 # Record the timestamp
-                timestamp = time.time()
+                timestamp = round((time.time() - start_time)*1000, 0)
                 
                 # Write the data to the CSV file
                 writer.writerow({
@@ -106,7 +107,7 @@ for i in range(50):
                 })
                 
                 # Wait for a short period before polling again
-                time.sleep(0.1)  # Adjust the interval as needed
+                time.sleep(0.01)  # Adjust the interval as needed
 
         except KeyboardInterrupt:
             # Stop recording on user interrupt

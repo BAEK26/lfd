@@ -1,8 +1,9 @@
 import gym
 import math
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from xarm.wrapper import XArmAPI
+from gymnasium_robotics.core import GoalEnv
 
 JOINT_LIMIT =  [
     (-2 * math.pi, 2 * math.pi),
@@ -13,7 +14,7 @@ JOINT_LIMIT =  [
     (-2 * math.pi, 2 * math.pi)
 ],
 
-class XArmEnv(gym.GoalEnv):
+class XArmEnv(GoalEnv):
     def __init__(self):
         super(XArmEnv, self).__init__()
         self.arm = XArmAPI('192.168.1.194')  
@@ -32,13 +33,19 @@ class XArmEnv(gym.GoalEnv):
         obs = self._get_obs()
         # 액션 및 관찰 공간 정의
         # action space: x, y, z displacement -50~50 TODO: roll pitch yaw -> 갑자기 변할 수 있음..
-        self.action_space = spaces.Box(low=-50, high=2*50, shape=(3,), dtype='float32')
+        # self.action_space = spaces.Box(low=-50, high=50, shape=(3,), dtype='float32')
+        self.action_space = spaces.Box(low=-5, high=5, shape=(3,), dtype='float32')
         # observation space: joint angles
-        self.observation_space = spaces.Dict(dict( #TODO: change to actual observation space
-            observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
-            achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
-            desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
-        ))
+        # self.observation_space = spaces.Dict(dict( #TODO: change to actual observation space
+        #     observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
+        #     achieved_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+        #     desired_goal=spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+        # ))
+        self.observation_space = spaces.Dict({ #TODO: change to actual observation space
+            'observation':spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
+            'achieved_goal':spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+            'desired_goal':spaces.Box(-np.inf, np.inf, shape=obs['achieved_goal'].shape, dtype='float32'),
+        })
         self.achieved_goal_index = len(obs['observation']) 
         self.achieved_goal_index = len(obs['observation']) + len(obs['achieved_goal'])
 
@@ -47,12 +54,7 @@ class XArmEnv(gym.GoalEnv):
         # 액션 실행
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
-        current_angle = self.arm.get_servo_angle(is_radian=False)
-        new_angle = [angle + action for angle, action in zip(current_angle, action)]
-        # new_angle = current_angle + action #TODO: check if this is correct
-        new_angle = [np.clip(angle, low, high) for angle, (low, high) in zip(new_angle, JOINT_LIMIT)]
-
-        self.arm.set_servo_angle(angle=new_angle, is_radian=False)
+        self.arm.set_position(*action, relative=True)
         
         # 새로운 상태 관찰
         obs = self._get_obs()
@@ -94,10 +96,10 @@ class XArmEnv(gym.GoalEnv):
         pass
 
     def _get_obs(self):
-        angle_state = self.arm.get_servo_angle()
-        coordinates = self.arm.get_position(is_radian=False)
-        external_force = self.arm.ft_ext_force()
-        gripper_state = self.arm.get_suction_cup() 
+        angle_state = self.arm.get_servo_angle()[1]
+        coordinates = self.arm.get_position(is_radian=False)[1]
+        external_force = self.arm.ft_ext_force
+        gripper_state = self.arm.get_suction_cup()
 
         obs = np.concatenate([angle_state, coordinates, gripper_state, external_force])
 
@@ -125,6 +127,7 @@ if __name__ == "__main__":
     print(obs)
     for _ in range(1000):
         action = env.action_space.sample()
+        # print("action", action)
         obs, reward, done, _ = env.step(action)
         print(obs, reward)
         if done:

@@ -22,7 +22,7 @@ for column in data.columns[1:]:  # Skip 'timestamp' for interpolation
     interpolated_data[column] = np.interp(new_timestamps, data['timestamp'], data[column])
 
 # Save the interpolated data to a new CSV file
-output_path = './data/interpolated_trajectory.csv'
+output_path = './data/pumping_interpolated_trajectory.csv'
 interpolated_data.to_csv(output_path, index=False)
 
 print(f"Interpolated CSV saved to: {output_path}")

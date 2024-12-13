@@ -1,7 +1,7 @@
 import gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from xarm_env import XArmEnv  # 사용자 정의 환경
 
 # 사용자 정의 환경 생성
@@ -13,7 +13,7 @@ vec_env = make_vec_env(lambda: env, n_envs=1)
 
 # PPO 모델 초기화
 model = PPO(
-    "MlpPolicy",  # 다층 퍼셉트론 정책 (와우 이거 Lstm으로도 바꿀수 있다네)
+    "MultiInputPolicy",  # 다층 퍼셉트론 정책 (와우 이거 Lstm으로도 바꿀수 있다네)
     #"MlpLstmPolicy"
     vec_env,  # 벡터화된 환경
     learning_rate=0.0003,  # 학습률

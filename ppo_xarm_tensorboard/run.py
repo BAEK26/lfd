@@ -57,16 +57,16 @@ model = PPO.load("ppo_xarm_policy")
 
 # 테스트
 print("Starting testing...")
-obs = env.reset()
+obs = env.reset()[0]
 _states = None
 for _ in range(1000):#테스트 루프
     action, _states = model.predict(obs, deterministic=True)  # 결정론적 행동 예측, 상태 추적
-    obs, reward, done, info = env.step(action) # 환경에 행동 적용 (수행한다고)
+    obs, reward, done,_, info = env.step(action) # 환경에 행동 적용 (수행한다고)
     print(f"Reward: {reward}, Info: {info}") # 보상과 추가정보 출력
 
     if done: # 에피소드 완료하면 재설정
         print("Episode finished. Resetting environment.")
-        obs = env.reset()
+        obs = env.reset()[0]
         _states = None # 상태 초기화
 
 # 환경 종료

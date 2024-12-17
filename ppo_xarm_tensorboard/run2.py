@@ -2,9 +2,10 @@ import gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
-from xarm_env import XArmEnv
+from env4 import XArmEnv
 import numpy as np
 from tqdm import tqdm
+import torch
 
 # (4) 여기에 이전 run.py 대비 변화를 표시:
 # - EpisodeLoggerCallback 유지
@@ -47,8 +48,11 @@ class EpisodeLoggerCallback(BaseCallback):
 
 # (4) env 인스턴스 생성 시 데모 활용
 env = XArmEnv(use_demonstrations=True)
-
 vec_env = make_vec_env(lambda: env, n_envs=1)
+
+# GPU 설정 확인
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 model = PPO(
     "MultiInputPolicy",
@@ -77,8 +81,8 @@ checkpoint_callback = CheckpointCallback(
 
 episode_logger = EpisodeLoggerCallback()
 
-total_timesteps = 50000
-chunk_size = 5000
+total_timesteps = 500000
+chunk_size = 10000
 current_steps = 0
 
 print("Starting training with tqdm...")

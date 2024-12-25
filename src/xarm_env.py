@@ -7,12 +7,12 @@ from gymnasium_robotics.core import GoalEnv
 
 JOINT_LIMIT =  [
     (-2 * math.pi, 2 * math.pi),
-    (-2.042035, 2.024581),  
-    (-0.061086523819801536, 3.92699),  
+    (-2.61799, 2.61799),
+    (-0.0610865, 5.23599),
     (-2 * math.pi, 2 * math.pi),
-    (-1.692969, 2.1642082724729685),  
+    (-2.16421, 2.16421),
     (-2 * math.pi, 2 * math.pi)
-],
+]
 
 class XArmEnv(GoalEnv):
     def __init__(self):
@@ -24,7 +24,7 @@ class XArmEnv(GoalEnv):
         print('initializing with state:', self.arm.get_state())
 
 
-        self._max_episode_steps = 25
+        self._max_episode_steps = 100
         #self.num_steps = 0
 
         #TODO: goal space to be changed to tilting area
@@ -34,7 +34,7 @@ class XArmEnv(GoalEnv):
         # 액션 및 관찰 공간 정의
         # action space: x, y, z displacement -50~50 TODO: roll pitch yaw -> 갑자기 변할 수 있음..
         # self.action_space = spaces.Box(low=-50, high=50, shape=(3,), dtype='float32')
-        self.action_space = spaces.Box(low=-5, high=5, shape=(3,), dtype='float32')
+        self.action_space = spaces.Box(low=-50, high=50, shape=(3,), dtype='float32')
         # observation space: joint angles
         # self.observation_space = spaces.Dict(dict( #TODO: change to actual observation space
         #     observation=spaces.Box(-np.inf, np.inf, shape=obs['observation'].shape, dtype='float32'),
@@ -54,7 +54,7 @@ class XArmEnv(GoalEnv):
         # 액션 실행
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
-        self.arm.set_position(*action, relative=True)
+        self.arm.set_position(*action, relative=True, wait=True)
         
         # 새로운 상태 관찰
         obs = self._get_obs()
@@ -66,17 +66,23 @@ class XArmEnv(GoalEnv):
         reward = self.compute_reward(obs['achieved_goal'], self.goal, info)
         done = self.num_steps == self._max_episode_steps
         
-        return obs, reward, done, info
+        return obs, reward, done,None, info
 
 
 
 
-    def reset(self):
-        super(XArmEnv, self).reset()
-        self.arm.reset(wait=True)
+    def reset(self, seed=None, maybe_options:dict | None = None, options2 = None):
+        super(XArmEnv, self).reset(seed=seed, options=maybe_options)
+        # self.arm.reset(wait=True)
+        self.arm.set_servo_angle(angle=[118.61103,45.350011,45.358376,2.625751,-73.658767,-76.091316], wait=True)
+        print("RESET.....", end="")
+        import time
+        time.sleep(5)
+        print("...DONE")
         self.goal = self._sample_goal()
         self.num_steps = 0
-        return self._get_obs()
+        return self._get_obs(), {}
+
 
     def compute_reward(self, achieved_goal, desired_goal, info):
         distance = np.linalg.norm(achieved_goal - desired_goal)
@@ -103,11 +109,15 @@ class XArmEnv(GoalEnv):
 
         obs = np.concatenate([angle_state, coordinates, gripper_state, external_force])
 
-
+        # print("achieved_goal", coordinates)
+        # print("desired_goal", self.goal)
         return {
             'observation': obs.copy(),
             'achieved_goal': np.squeeze(coordinates.copy()),
             'desired_goal': self.goal.copy(),
+            "angel_state": angle_state.copy(),
+            "external_force": external_force.copy(),
+            "gripper_state": gripper_state.copy()
         }
     
     def _reset_sim(self):
@@ -129,7 +139,7 @@ if __name__ == "__main__":
         action = env.action_space.sample()
         # print("action", action)
         obs, reward, done, _ = env.step(action)
-        print(obs, reward)
+        print( reward)
         if done:
             break
     env.close()

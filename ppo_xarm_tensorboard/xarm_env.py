@@ -7,12 +7,12 @@ from gymnasium_robotics.core import GoalEnv
 
 JOINT_LIMIT =  [
     (-2 * math.pi, 2 * math.pi),
-    (-2.042035, 2.024581),  
-    (-0.061086523819801536, 3.92699),  
+    (-2.61799, 2.61799),
+    (-0.0610865, 5.23599),
     (-2 * math.pi, 2 * math.pi),
-    (-1.692969, 2.1642082724729685),  
+    (-2.16421, 2.16421),
     (-2 * math.pi, 2 * math.pi)
-],
+]
 
 class XArmEnv(GoalEnv):
     def __init__(self):

@@ -28,8 +28,13 @@ class XArmEnv(GoalEnv):
         #self.num_steps = 0
 
         #TODO: goal space to be changed to tilting area
-        self.goal_space = spaces.Box(low=np.array([260, 190, 250, -170, -90, 0]), high=np.array([270, 200, 260, -155, -80, 10]), dtype='float32')
+        self.goal_space = spaces.Box(
+            low=np.array([260, 190, 250, -170, -90, 0]), 
+            high=np.array([270, 200, 260, -155, -80, 10]), 
+            dtype='float32'
+        )
         self.goal = self._sample_goal()
+
         obs = self._get_obs()
         # 액션 및 관찰 공간 정의
         # action space: x, y, z displacement -50~50 TODO: roll pitch yaw -> 갑자기 변할 수 있음..
@@ -115,6 +120,9 @@ class XArmEnv(GoalEnv):
             'observation': obs.copy(),
             'achieved_goal': np.squeeze(coordinates.copy()),
             'desired_goal': self.goal.copy(),
+            "angle_state": angle_state.copy(),
+            "external_force": external_force.copy(),
+            "gripper_state": gripper_state.copy()
         }
     
     def _reset_sim(self):

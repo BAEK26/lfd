@@ -87,7 +87,7 @@ class XArmEnv(GoalEnv):
 
         # 충돌 감지
         #collision_detected = False #self.arm.set_self_collision_detection
-        ext_force = self.arm.ft_ext_force   # 이게 예를 들어 외력 측정값이라면
+        ext_force = curr_state["external_force"]  
         # 특정 threshold 이상이면 충돌로 간주
         force_threshold = 10.0
         collision_detected = np.linalg.norm(ext_force) > force_threshold
@@ -97,7 +97,11 @@ class XArmEnv(GoalEnv):
             'is_success': self._is_success(curr_state['achieved_goal'], self.goal),
             'future_length': self._max_episode_steps - self.num_steps,
             'state_change': np.linalg.norm(delta_state),  # 상태 변화량
-            'collision': collision_detected }  # 충돌 여부 추가}
+            'collision': collision_detected,
+            "angle_state": curr_state["angle_state"],
+            "external_force": ext_force,
+            "gripper_state": curr_state["gripper_state"] 
+              }  # 충돌 여부 추가}
 
         # 보상 계산
         reward = self.compute_reward(curr_state['achieved_goal'], self.goal, info, action)
@@ -124,7 +128,7 @@ class XArmEnv(GoalEnv):
         
         #관절 상태 기반 패널티 계산 (JOINT_LIMIT 활용)
         try:
-            joint_angles = self.arm.get_servo_angle()[1]  # joint_angles는 [angle_1, angle_2, ..., angle_6] 형태라고 가정
+            joint_angles = info["angle_state"]
             joint_penalty = 0.0
             for angle, (min_limit, max_limit) in zip(joint_angles, JOINT_LIMIT):
                 # 각도가 최소 범위보다 작을 경우 초과하는 만큼 페널티
@@ -245,6 +249,9 @@ class XArmEnv(GoalEnv):
             'observation': obs.copy(),
             'achieved_goal': np.squeeze(coordinates.copy()),
             'desired_goal': self.goal.copy(),
+            "angle_state": angle_state.copy(),
+            "external_force": external_force.copy(),
+            "gripper_state": gripper_state.copy()
         }
 
     def _sample_goal(self):

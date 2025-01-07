@@ -11,13 +11,13 @@ print(torch.cuda.is_available())  # True가 출력되어야 함
 print(torch.cuda.get_device_name(0))  # GPU 이름 출력
 
 
-JOINT_LIMIT = [
-    (-math.pi, math.pi),        # Joint 1
-    (-math.pi / 2, math.pi / 2),  # Joint 2
-    (-math.pi / 2, math.pi / 2),  # Joint 3
-    (-math.pi, math.pi),        # Joint 4
-    (-math.pi / 2, math.pi / 2),  # Joint 5
-    (-math.pi, math.pi),        # Joint 6
+JOINT_LIMIT =  [
+    (-2 * math.pi, 2 * math.pi),
+    (-2.61799, 2.61799),
+    (-0.0610865, 5.23599),
+    (-2 * math.pi, 2 * math.pi),
+    (-2.16421, 2.16421),
+    (-2 * math.pi, 2 * math.pi)
 ]
 #길이 6정도 리스트고, 각 원소는 min_limit, max_limit 형태 튜플임.
 
@@ -227,7 +227,13 @@ class XArmEnv(GoalEnv):
                 # 각도가 최대 범위보다 클 경우 초과하는 만큼 페널티
                 elif angle > max_limit:
                     joint_penalty += (angle - max_limit)
-            reward -= 0.1 * joint_penalty
+                
+                # 각도가 limit근접해도 페널티 20도 범위내에서 exponential하게 부여
+                error_angle = max(angle - min_limit, max_limit - angle)
+                if error_angle > math.pi / 9 :
+                    joint_penalty = np.exp(0.3 - error_angle)
+
+            reward -= 10 * joint_penalty
         except Exception as e:
             print(f"Joint angle error: {e}")
             
@@ -318,6 +324,7 @@ class XArmEnv(GoalEnv):
             self.prev_distance = position_distance
 
         # 리워드 클리핑
+        # 클리핑 왜 하는지 모르겠습니다
         return np.clip(reward, -10, 20)
 
 

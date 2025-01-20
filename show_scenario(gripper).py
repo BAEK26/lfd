@@ -1,7 +1,7 @@
 import os
 import csv
-import sys
 import time
+import keyboard  # 키보드 입력 감지 모듈
 from xarm.wrapper import XArmAPI
 
 # 파일 이름 자동 생성: test%d.csv 형태
@@ -21,19 +21,21 @@ arm.motion_enable(enable=True)
 arm.set_mode(0)
 arm.set_state(state=0)
 
-# Function to get current coordinates and angles
+# 현재 좌표 및 각도 가져오는 함수
 def get_robot_state():
     coordinates = arm.get_position(is_radian=False)
     angles = arm.get_servo_angle()
-    gripper = arm.get_gripper_position()
-    return coordinates, angles, gripper
+    return coordinates[1], angles[1]
 
-# Turn on manual mode before recording
+
+# 수동 모드로 변경
 arm.set_mode(2)
 arm.set_state(0)
-arm.set_suction_cup(False)
 
-# Open the CSV file to save the data
+arm.set_suction_cup(False)
+is_gripper_open = 0 # 그리퍼 제어 변수
+
+# CSV 파일 작성
 with open(datafile_path, 'w', newline='') as csvfile:
     fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -42,7 +44,14 @@ with open(datafile_path, 'w', newline='') as csvfile:
     try:
         start_time = time.time()
         while True:
-            coordinates, angles, gripper = get_robot_state()
+            if keyboard.is_pressed('2'):
+                arm.set_suction_cup(True)
+                is_gripper_open = 1
+            elif keyboard.is_pressed('1'):
+                arm.set_suction_cup(False)
+                is_gripper_open = 0
+            
+            coordinates, angles = get_robot_state()
             timestamp = round((time.time() - start_time) * 1000, 0)
             
             writer.writerow({
@@ -59,13 +68,15 @@ with open(datafile_path, 'w', newline='') as csvfile:
                 'joint4': angles[3],
                 'joint5': angles[4],
                 'joint6': angles[5],
-                'gripper' : gripper
-                
+                'gripper': is_gripper_open
             })
             time.sleep(0.01)
-
+    
     except KeyboardInterrupt:
         print("Data recording stopped.")
 
 arm.set_mode(0)
 arm.disconnect()
+
+# keyboard 모듈이 없을 경우 설치 방법
+# pip install keyboard

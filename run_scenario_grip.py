@@ -76,18 +76,20 @@ data=[]
 
 # Open a CSV file to load the data
 with open(file_path, 'r') as csvfile:
-    fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6']
+    fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
     reader = csv.DictReader(csvfile)
     for row in reader:
 
         data.append({k:float(v) for k, v in row.items()})
 
-arm.set_suction_cup(False)
+
 for point in data:
     angles = [point['joint1'], point['joint2'], point['joint3'], point['joint4'], point['joint5'], point['joint6']]
     # arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=100.0)
     arm.set_servo_angle_j(angles=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=True, radius=100.0)
+    arm.set_suction_cup(point['gripper'])
     time.sleep(0.001)
+    
 coordinates, angles = get_robot_state()
 print(coordinates, angles)
 # arm.set_servo_angle(angle=angles, speed=params.angle_speed, mvacc=params.angle_acc, wait=False, radius=0.0)

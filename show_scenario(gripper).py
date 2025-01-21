@@ -44,10 +44,10 @@ with open(datafile_path, 'w', newline='') as csvfile:
     try:
         start_time = time.time()
         while True:
-            if keyboard.is_pressed('2'):
+            if keyboard.is_pressed('up'):
                 arm.set_suction_cup(True)
                 is_gripper_open = 1
-            elif keyboard.is_pressed('1'):
+            elif keyboard.is_pressed('down'):
                 arm.set_suction_cup(False)
                 is_gripper_open = 0
             

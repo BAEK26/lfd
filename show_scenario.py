@@ -25,7 +25,7 @@ arm.set_state(state=0)
 def get_robot_state():
     coordinates = arm.get_position(is_radian=False)
     angles = arm.get_servo_angle()
-    return coordinates, angles
+    return coordinates[1], angles[1]
 
 # Turn on manual mode before recording
 arm.set_mode(2)

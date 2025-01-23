@@ -1,0 +1,43 @@
+import os
+import csv
+import sys
+import argparse
+from xarm.wrapper import XArmAPI
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+
+# xArm 연결 설정
+ip = "192.168.1.194"
+arm = XArmAPI(ip)
+arm.motion_enable(enable=True)
+arm.set_state(state=0)
+
+# 인자 파서 설정
+parser = argparse.ArgumentParser()
+parser.add_argument('--file_name', action='store', type=str, help='file to run xArm6', required=True)
+args = parser.parse_args()
+
+file_path = args.file_name
+
+data = []
+
+# CSV 파일 로드
+with open(file_path, 'r') as csvfile:
+    fieldnames = ['timestamp', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6', 'gripper']
+    reader = csv.DictReader(csvfile)
+    for row in reader:
+        point = {k: float(v) for k, v in row.items() if k in fieldnames}
+        pose = [point['x'], point['y'], point['z'], point['roll'], point['pitch'], point['yaw']]
+        angles = arm.get_inverse_kinematics(pose)[1]  # 역기구학 계산
+        if angles:
+            point['joint1'], point['joint2'], point['joint3'], point['joint4'], point['joint5'], point['joint6'] = angles[:6]
+        data.append(point)
+
+# 업데이트된 데이터 저장
+output_file = "updated_" + os.path.basename(file_path)
+with open(output_file, 'w', newline='') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(data)
+
+print(f"Updated file saved as {output_file}")

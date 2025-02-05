@@ -13,8 +13,6 @@ DMP 처리: xyz 좌표에 대해 뉴럴 네트워크를 통한 forcing term 예�
 # 0. 라이브러리
 ##################################
 
-from trajectory import Trajectory 
-
 import os
 import numpy as np
 import pandas as pd
@@ -29,6 +27,12 @@ import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 import datetime
+
+# 현재 파일이 src 폴더 안에 있을 때, 상위 폴더를 sys.path에 추가
+if __name__ == "__main__" and __package__ is None:
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    
+from src.trajectory import Trajectory
 
 
 ##################################
@@ -143,12 +147,12 @@ class NeuralDMP:
             sim_xyz[t] = sim_xyz[t-1] + (v[t] / self.tau) * dt
         return sim_xyz  # (timesteps, 3)
     
-    def train(self, demo_trajectory, base_dir, num_epochs=2000, lr=0.001):
+    def train(self, demo_trajectory, log_dir, num_epochs=2000, lr=0.001):
         optimizer = torch.optim.AdamW(self.forcing_net.parameters(), lr=lr)
         criterion = torch.nn.MSELoss()
         demo_xyz_tensor = torch.tensor(demo_trajectory.xyz, dtype=torch.float32)
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        writer = SummaryWriter(log_dir=os.path.join(base_dir, 'runs', 'dmp_training', str(current_time)))
+        writer = SummaryWriter(log_dir=os.path.join(log_dir, str(current_time)))
 
         timesteps = demo_trajectory.len()
         start_xyz = demo_trajectory.xyz[0]
@@ -175,7 +179,7 @@ class NeuralDMP:
 
             # 스칼라 및 히스토그램: Forcing term weights 통계 (학습 직후 네트워크 입력에 대한 예측)            with torch.no_grad():
             forcing_input_tensor = torch.tensor(np.concatenate([start_xyz, goal_xyz]), dtype=torch.float32).unsqueeze(0)
-            forcing_weights = dmp.forcing_net(forcing_input_tensor).view(dmp.num_basis, dmp.movement_dim)
+            forcing_weights = self.forcing_net(forcing_input_tensor).view(self.num_basis, self.movement_dim)
             writer.add_histogram("ForcingWeights", forcing_weights, epoch)
             writer.add_scalar("ForcingWeights_Mean", forcing_weights.mean().item(), epoch)
             writer.add_scalar("ForcingWeights_Var", forcing_weights.var().item(), epoch)
@@ -250,12 +254,28 @@ if __name__ == '__main__':
     base_dir = r"C:\Users\박수민\Documents\neoDMP" # base 경로 (알맞게 수정)
     input_csv = os.path.join(base_dir, "data", "processed_sumin_a.csv") # CSV 로드 파일 경로
 
+    # CSV 불러와 Trajectory 객체 생성
     traj = Trajectory.load_csv(input_csv)
 
+    # 신경망 DMP 객체 생성
     dmp = NeuralDMP(num_basis=20, alpha_z=25, beta_z_ratio=4, alpha_x=4, tau=1, 
                     width=0.05, forcing_input_dim=6, movement_dim=3)
-    dmp.train(traj, base_dir)
+    
+    # 필터링된 Trajectory에 DMP 적용
+    log_dir = os.path.join(base_dir, 'runs', 'dmp_training') # 학습 로그 저장 경로 
+    dmp.train(traj, log_dir, num_epochs=1000)
 
+    # 학습된 가중치에 기반한 경로 생성 및 시각화
     traj_DMPed = dmp.generate(traj)
     Trajectory.show(traj, traj_DMPed)
 
+    # 일반화 능력 보기
+    from src.utils import random_near_endpoints
+
+    # 예시는 5개 정도
+    for i in range(5):  
+
+      # end 위치를 30% 이내에서 적절히 변화 주기
+      new_goal = random_near_endpoints(traj_DMPed, option='end', random_rate=0.3)
+      traj_DMP_goal_changed = dmp.generate(traj_DMPed, end=new_goal)
+      Trajectory.show(traj_DMPed, traj_DMP_goal_changed)

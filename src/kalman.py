@@ -1,10 +1,15 @@
-from trajectory import Trajectory
-
-from pykalman import KalmanFilter
 import numpy as np
 import os
+import sys
+from pykalman import KalmanFilter
 
-def apply_kalman_filter_segmented(trajectory, process_var=1e-4, measurement_var=1e-1):
+# 현재 파일이 src 폴더 안에 있을 때, 상위 폴더를 sys.path에 추가
+if __name__ == "__main__" and __package__ is None:
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    
+from src.trajectory import Trajectory
+
+def kalman_filter(trajectory, process_var=1e-4, measurement_var=1e-1):
     if trajectory.target == 'euler':
         data = trajectory.euler_angles
         state_dim = 3
@@ -49,7 +54,7 @@ if __name__ == "__main__":
     traj = Trajectory.load_csv(load_path)
 
     # 궤적에 칼만 필터 적용
-    traj_kalman = apply_kalman_filter_segmented(traj, process_var=0.0001, measurement_var=1.0)
+    traj_kalman = kalman_filter(traj, process_var=0.0001, measurement_var=1.0)
 
     # 시각화
     Trajectory.show(traj, traj_kalman)

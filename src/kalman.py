@@ -3,11 +3,10 @@ import os
 import sys
 from pykalman import KalmanFilter
 
-# 현재 파일이 src 폴더 안에 있을 때, 상위 폴더를 sys.path에 추가
-if __name__ == "__main__" and __package__ is None:
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-    
-from src.trajectory import Trajectory
+try:
+    from trajectory import Trajectory  # 직접 실행할 경우
+except ImportError:
+    from src.trajectory import Trajectory  # main.py에서 실행할 경우
 
 def kalman_filter(trajectory, process_var=1e-4, measurement_var=1e-1):
     if trajectory.target == 'euler':

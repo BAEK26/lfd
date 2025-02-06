@@ -1,12 +1,17 @@
-from trajectory import Trajectory
+# 데이터를 펌핑하는 코드입니다.
 
-import os
 import numpy as np
+import os
+
+try:
+    from trajectory import Trajectory  # 직접 실행할 경우
+except ImportError:
+    from src.trajectory import Trajectory  # main.py에서 실행할 경우
 
 # CSV 데이터를 펌핑합니다.
 # :param: 목표율(기본값은 초당 360개)
 # :return: trajectoryectory 객체
-def pumping(trajectory, target_rate=360):
+def pumping_data(trajectory, target_rate=360):
     interval_ms = 1000 / target_rate
     new_timestamp = np.arange(trajectory.timestamp[0], trajectory.timestamp[-1], interval_ms)
     
@@ -34,7 +39,7 @@ if __name__ == "__main__":
     traj = Trajectory.load_csv(load_path)
 
     # 궤적 펌핑
-    pumped_traj = pumping(traj, target_rate=360)
+    pumped_traj = pumping_data(traj, target_rate=360)
 
     # 궤적 저장
     save_path = os.path.join(base_dir, "data", "pumped_sumin_a.csv") # CSV 저장 파일 경로

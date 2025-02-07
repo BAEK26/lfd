@@ -5,6 +5,8 @@ import matplotlib; matplotlib.use('Qt5Agg')
 import os
 from copy import deepcopy
 
+base_dir = os.path.join(os.path.dirname(__file__), '..')
+data_dir = os.path.join(base_dir, 'data')
 
 # 향후 쓰이게 될 궤적들의 기본 단위를 정의하는 클래스.
 # 데이터 저장 및 시각화를 다룹니다.
@@ -22,25 +24,47 @@ class Trajectory:
         """
         self.target을 어떻게 설정하느냐에 따라 향후 시각화, DMP, 필터링 등에서 적용 대상이 달라집니다.
         C, E, J (각각 Cartesian, Euler, Joint) 중 하나로 설정하시면 됩니다.
-
-
         """
     
     # CSV로부터 Trajectory 인스턴스를 반환합니다(주로 사용).
-    # :param file_path: CSV 로드 파일 경로
+    # :param file_path: CSV 로드 파일 이름
     # :return: Trajectory 객체
     @classmethod
-    def load_csv(cls, file_path):
+    def load_csv(cls, file_name):
+
+        # 파일 경로 설정
+        file_path = os.path.join(data_dir, file_name)
+
+        # 파일명에 csv 미포함 시 추가
+        if ".csv" not in file_name:
+            file_path += '.csv'
+
+        # 데이터 불러오기
         data = pd.read_csv(file_path)
+
+        # 각 데이터 넘파이 배열화하기
         xyz = np.vstack((data['x'].values, data['y'].values, data['z'].values)).T
         euler_angles = np.vstack((data['roll'].values, data['pitch'].values, data['yaw'].values)).T
         joints = np.vstack((data['joint1'].values, data['joint2'].values, data['joint3'].values, 
                             data['joint4'].values, data['joint5'].values, data['joint6'].values)).T
+        
+        # Trajectory 클래스 반환
         return cls(data['timestamp'].values, xyz, euler_angles, joints, data['gripper'].values)
 
     # Trajectory 인스턴스를 CSV로 저장합니다.
-    # :param file_path: CSV 저장 파일 경로
-    def save_csv(self, file_path):
+    # :param file_name: CSV 저장 파일 이름
+    def save_csv(self, file_name):
+
+        # 파일 경로 설정
+        file_path = os.path.join(data_dir, file_name)
+
+        # 파일명에 csv 미포함 시 추가
+        if ".csv" not in file_name:
+            file_path += '.csv'
+
+        # 데이터 불러오기
+        data = pd.read_csv(file_path)
+
         data = pd.DataFrame({
             'timestamp': self.timestamp,
             'x': self.xyz[:, 0], 'y': self.xyz[:, 1], 'z': self.xyz[:, 2],
@@ -52,9 +76,7 @@ class Trajectory:
         data.to_csv(file_path, index=False, header=True)
     
     # traj2 = traj1.copy()와 같은 문법을 지원합니다.
-    def copy(self):
-        
-        return deepcopy(self)
+    def copy(self): return deepcopy(self)
     
     # print(traj)와 같은 문법을 지원합니다.
     def __str__(self):
@@ -86,19 +108,15 @@ class Trajectory:
         else:
             raise TypeError("Indexing must be done using slices (e.g., trajectory[start:end])")
          
-            
     # Trajectory 데이터를 시각화하는 함수입니다. 
     # target에 따라 시각화 대상은 달라집니다.
-
-    # 다음의 문법을 지원합니다.
-    # traj.show(): 해당 Trajectory만 출력
-    # Trajectory.show(traj1, traj2, ...): 여러 Trajectory를 동시에 출력
+    # 실제로 외부에서 사용하지는 않습니다.
     @staticmethod
-    def plot(*trajectories):
+    def __plot(*trajectories):
         if len(trajectories) == 1 and isinstance(trajectories[0], list):
             trajectories = trajectories[0]
 
-        # 둘 이상의 궤적이 들어오면 첫 번째 궤적 기준으로 목표 설정
+        # 첫 번째 궤적 기준으로 목표 설정
         plot_target = trajectories[0].target 
 
         # Joint 그래프 출력
@@ -143,27 +161,23 @@ class Trajectory:
             ax.legend()
             ax.set_title("Trajectories")
             plt.show()
-    
+
+    # 시각화는 이 함수를 사용합니다.
+    # traj.show(): 해당 Trajectory만 출력
+    # Trajectory.show(traj1, traj2, ...): 여러 Trajectory를 동시에 출력
     def show(self, *args):
         if not args:
-            self.plot(self)
+            self.__plot(self)
         else:
-            self.plot(self, *args)
+            self.__plot(self, *args)
 
 
 # 사용 예제
 if __name__ == "__main__":
 
-    # base 경로 (알맞게 수정)
-    base_dir = r"C:\Users\박수민\Documents\neoDMP"
-
-    # 실제 CSV 파일 경로
-    path1 = os.path.join(base_dir, "data", "test_sumin_a.csv")
-    path2 = os.path.join(base_dir, "data", "test_sumin_b.csv")
-    
     # CSV로부터 객체 생성
-    traj1 = Trajectory.load_csv(path1)
-    traj2 = Trajectory.load_csv(path2)
+    traj1 = Trajectory.load_csv("test_sumin_a.csv")
+    traj2 = Trajectory.load_csv("test_sumin_b")
 
     # traj1 시각화(기본값은 C - cartesian)
     traj1.show()  

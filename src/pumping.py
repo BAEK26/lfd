@@ -4,9 +4,9 @@ import numpy as np
 import os
 
 try:
-    from trajectory import Trajectory  # 직접 실행할 경우
+    from trajectory import Trajectory  # 실행 코드일 경우
 except ImportError:
-    from src.trajectory import Trajectory  # main.py에서 실행할 경우
+    from src.trajectory import Trajectory  # 모듈 코드인 경우
 
 # CSV 데이터를 펌핑합니다.
 # :param: 목표율(기본값은 초당 360개)
@@ -32,17 +32,13 @@ def pumping_data(trajectory, target_rate=360):
 # 실행 코드
 if __name__ == "__main__":
 
-    base_dir = r"C:\Users\박수민\Documents\neoDMP" # base 경로 (알맞게 수정)
-    load_path = os.path.join(base_dir, "data", "test_sumin_a.csv") # CSV 로드 파일 경로
-    
     # CSV로부터 trajectoryectory 객체 생성
-    traj = Trajectory.load_csv(load_path)
+    traj = Trajectory.load_csv("test_sumin_a.csv")
 
     # 궤적 펌핑
     pumped_traj = pumping_data(traj, target_rate=360)
 
     # 궤적 저장
-    save_path = os.path.join(base_dir, "data", "pumped_sumin_a.csv") # CSV 저장 파일 경로
-    pumped_traj.save_csv(save_path)
+    pumped_traj.save_csv("pumped_sumin_a.csv")
     
 

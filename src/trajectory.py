@@ -61,10 +61,7 @@ class Trajectory:
         # 파일명에 csv 미포함 시 추가
         if ".csv" not in file_name:
             file_path += '.csv'
-
-        # 데이터 불러오기
-        data = pd.read_csv(file_path)
-
+            
         data = pd.DataFrame({
             'timestamp': self.timestamp,
             'x': self.xyz[:, 0], 'y': self.xyz[:, 1], 'z': self.xyz[:, 2],

@@ -3,10 +3,13 @@ import os
 from pykalman import KalmanFilter
 
 try:
-    from trajectory import Trajectory  # 직접 실행할 경우
+    from trajectory import Trajectory  # 실행 코드일 경우
 except ImportError:
-    from src.trajectory import Trajectory  # main.py에서 실행할 경우
+    from src.trajectory import Trajectory  # 모듈 코드인 경우
 
+# 칼만 필터 적용 함수
+# :param: Trajectory, 강도 조절 패러미터 2개
+# :return: Trajectory(Filtered)
 def kalman_filter(trajectory, process_var=1e-4, measurement_var=1e-1):
     if trajectory.target == 'euler':
         data = trajectory.euler_angles
@@ -45,11 +48,8 @@ def kalman_filter(trajectory, process_var=1e-4, measurement_var=1e-1):
 # 실행 코드
 if __name__ == "__main__":
 
-    base_dir = r"C:\Users\박수민\Documents\neoDMP" # base 경로 (알맞게 수정)
-    load_path = os.path.join(base_dir, "data", "pumped_sumin_a.csv") # CSV 로드 파일 경로
-    
     # CSV로부터 Trajectory 객체 생성
-    traj = Trajectory.load_csv(load_path)
+    traj = Trajectory.load_csv("pumped_sumin_a")
 
     # 궤적에 칼만 필터 적용
     traj_kalman = kalman_filter(traj, process_var=0.0001, measurement_var=1.0)
@@ -58,6 +58,5 @@ if __name__ == "__main__":
     Trajectory.show(traj, traj_kalman)
 
     # 궤적 저장
-    save_path = os.path.join(base_dir, "data", "processed_sumin_a.csv") # CSV 저장 파일 경로
-    traj_kalman.save_csv(save_path)
+    traj_kalman.save_csv("processed_sumin_a.csv")
 

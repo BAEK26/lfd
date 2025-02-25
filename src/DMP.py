@@ -13,6 +13,8 @@ DMP 처리: xyz 좌표에 대해 뉴럴 네트워크를 통한 forcing term 예�
 # 0. 라이브러리
 ##################################
 
+
+import sys
 import os
 import numpy as np
 import pandas as pd
@@ -251,8 +253,8 @@ class NeuralDMP:
 ##################################
 if __name__ == '__main__':
 
-    base_dir = r"C:\Users\박수민\Documents\neoDMP" # base 경로 (알맞게 수정)
-    input_csv = os.path.join(base_dir, "data", "processed_sumin_a.csv") # CSV 로드 파일 경로
+    base_dir = os.path.join(os.path.dirname(__file__), "..") # base 경로 (알맞게 수정)
+    input_csv = os.path.join(base_dir, "data", "processed_a.csv") # CSV 로드 파일 경로
 
     # CSV 불러와 Trajectory 객체 생성
     traj = Trajectory.load_csv(input_csv)

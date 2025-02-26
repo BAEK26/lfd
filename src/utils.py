@@ -77,7 +77,9 @@ class Visualize:
 
             # Plot end-effector trajectory
             ax.plot(trajectory.xyz[:, 0], trajectory.xyz[:, 1], trajectory.xyz[:, 2], 'r--', label='Planned Trajectory')
-
+            ax.plot(trajectory.xyz[0, 0], trajectory.xyz[0, 1], trajectory.xyz[0, 2], 'r^', label='Start Point') 
+            ax.plot(trajectory.xyz[-1, 0], trajectory.xyz[-1, 1], trajectory.xyz[-1, 2], 'ro', label='End Point')
+            
             # Get joint angles for the current frame
             joints = trajectory.joints[frame]
             end_effector_pos = cls.plot_robot_arm(ax, joints)
@@ -142,4 +144,4 @@ if __name__ == "__main__":
     
     # CSV 불러와 Trajectory 객체 생성
     traj = Trajectory.load_csv("test_sumin_a.csv")
-    Visualize.simulate(traj, frame_rate=60)
+    Visualize.simulate(traj, frame_rate=15)

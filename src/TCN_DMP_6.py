@@ -356,7 +356,7 @@ class Trainer6D:
                  alpha_z=25.0, beta_z=25.0/4.0,
                  lr=1e-3, num_channels=32, levels=4,
                  kernel_size=2, dropout=0.1, causal=True,
-                 num_epochs=100,
+                 num_epochs=50,
                  log_dir="./runs_tcn_dmp6d"):
         """
         csv_list:  예) [r"data/a.csv", r"data/b.csv", ...]
@@ -565,26 +565,38 @@ class Trainer6D:
         all_xyz = []
         all_euler_angles = []
         all_joints = []
+        all_timestamps = []
         all_grippers = []
         all_weights = []
-        all_timestamps = []
         current_time_offset = 0.0
 
         sub_traj = None
-        for csv_path in csv_paths:
-            sub_traj = Trajectory.load_csv(csv_path)
+        for i, csv_path in enumerate(csv_paths):
+            if i == 0:
+                sub_traj = self.generate(csv_path, start_6d_override=None)
+            else:
+                last_xyz = sub_traj.xyz[-1]  # (3,)
+                last_rpy = sub_traj.euler_angles[-1]  # (3,)
+                last_6d = np.concatenate([last_xyz, last_rpy])
+                sub_traj = self.generate(csv_path, start_6d_override=last_6d)
+            
+            if sub_traj is None:
+                print(f"Failed to generate sub-traj for {csv_path}")
+                return None
+            
             all_xyz.append(sub_traj.xyz)
             all_euler_angles.append(sub_traj.euler_angles)
+            all_timestamps.append(sub_traj.timestamp + current_time_offset)
+            current_time_offset = all_timestamps[-1][-1]
+            
             all_joints.append(sub_traj.joints)
-            all_grippers.append(sub_traj.gripper)
-            all_weights.append(sub_traj.wegiht)
+            
+            if sub_traj.gripper is not None:
+                all_grippers.append(sub_traj.gripper)
+            if sub_traj.weight is not None:
+                all_weights.append(sub_traj.weight)
 
-            T_i = sub_traj.len()
-            t = sub_traj.timestamp + current_time_offset
-            current_time_offset = t[-1]
-            all_timestamps.append(t)
-
-        return Trajectory(all_timestamps, all_xyz, all_rpy, all_joints, all_grippers, all_weights)
+        return Trajectory(all_timestamps[0], all_xyz[0], all_euler_angles[0], all_joints[0], all_grippers[0], all_weights[0])
 
 
 #######################################################
@@ -628,15 +640,15 @@ if __name__ == "__main__":
 
     trainer = Trainer6D(
         csv_list=csv_list,
-        alpha_x=3.8,
+        alpha_x=3.5,
         tau=1.0,
-        alpha_z=25.0,
-        beta_z=25.0/5.0,
+        alpha_z=30.0,
+        beta_z=3.0,
         lr=1e-3,
         num_channels=32,
         levels=4,
         kernel_size=2,
-        dropout=0.3,
+        dropout=0.25,
         causal=True,
         num_epochs=12000,
         log_dir=os.path.join(base_dir, "runs", "tcn_dmp_6d")
@@ -665,7 +677,7 @@ if __name__ == "__main__":
         # 1) 각각의 데모 궤적 로드
         demo_trajs = []
         for i, csv_path in enumerate(sub_csv_list):
-            demo_traj = DMPDataset6D.Trajectory.load_csv(csv_path)
+            demo_traj = Trajectory.load_csv(csv_path)
             demo_trajs.append(demo_traj)
 
         # 2) 체이닝으로 최종 궤적 생성
@@ -696,28 +708,7 @@ if __name__ == "__main__":
         figs_dir = os.path.join(base_dir, "figs")
         os.makedirs(figs_dir, exist_ok=True)
 
-        # 새로 생성한 dmp trajectory CSV 저장
-        data_dir = os.path.join(base_dir, "data")
-        os.makedirs(data_dir, exist_ok=True)
-        csv_save_path = os.path.join(data_dir, "generated_trajectory_origin.csv")
-
-        # timestamp가 없으면 인덱스 생성
-        if final_traj.timestamp is None:
-            final_traj.timestamp = np.arange(final_traj.xyz.shape[0])
-        
-        # CSV 데이터 구성: timestamp, x, y, z, r, p, y
-        df = pd.DataFrame({
-            'timestamp': final_traj.timestamp,
-            'x': final_traj.xyz[:, 0],
-            'y': final_traj.xyz[:, 1],
-            'z': final_traj.xyz[:, 2],
-            'roll': final_traj.rpy[:, 0] if final_traj.rpy is not None else None,
-            'pitch': final_traj.rpy[:, 1] if final_traj.rpy is not None else None,
-            'yaw': final_traj.rpy[:, 2] if final_traj.rpy is not None else None,
-            'gripper': final_traj.gripper if final_traj.gripper is not None else None,
-        })
-        df.to_csv(csv_save_path, index=False)
-        print("Generated trajectory CSV saved to", csv_save_path)
+        final_traj.save_csv("generated_trajectory_origin.csv")
         
         # 정적 이미지 (jpg) 저장
         fig = plt.figure()

@@ -190,4 +190,29 @@ class Trajectory:
         if not args:
             self.__plot(self)
         else:
-            self.__plot(self, *args) 
+            self.__plot(self, *args) #GPT의 천재적 코드
+
+
+# 사용 예제
+if __name__ == "__main__":
+
+    # CSV로부터 객체 생성
+    traj1 = Trajectory.load_csv("test_sumin_a.csv")
+    traj2 = Trajectory.load_csv("test_sumin_b")
+
+    # traj1 시각화(기본값은 C - cartesian)
+    traj1.show()  
+    
+    # __getitem__ 연산자 사용 예시
+    
+    traj1_half = traj1[0 : traj1.len() // 2] # '궤적 길이'가 아닌 '시간' 기준으로 절반입니다.
+    Trajectory.show(traj1, traj1_half) 
+
+    # 오일러 각 시각화
+    traj1.target = 'E'
+    Trajectory.show(traj1, traj2) # 먼저 오는 궤적의 target을 기준으로 시각화합니다.
+
+    # 조인트 시각화
+    traj2.target = 'J'
+    Trajectory.show(traj2, traj1) 
+

@@ -4,20 +4,14 @@ import numpy as np
 from pykalman import KalmanFilter
 from scipy.interpolate import interp1d
 
-try:
-    from trajectory import Trajectory  # 실행 코드일 경우
-    from utils import Visualize
-except ImportError:
-    from src.trajectory import Trajectory  # 모듈 코드인 경우
+from src.trajectory import Trajectory
+from src.utils import Visualize
 
-
-class Process:
-    def __init__(self):
-        pass
-
+class Process:        
     # CSV 데이터를 펌핑합니다.
     # :param: 목표율(기본값은 초당 360개)
     # :return: trajectoryectory 객체
+    @staticmethod
     def pumping_data(trajectory, target_rate=360):
         interval_ms = 1000 / target_rate
         new_timestamp = np.arange(trajectory.timestamp[0], trajectory.timestamp[-1], interval_ms)
@@ -35,7 +29,6 @@ class Process:
         
         return Trajectory(new_timestamp, interpolated_xyz, interpolated_euler, interpolated_joints, interpolated_gripper)
     
-
     # 칼만 필터 적용 함수
     # :param: Trajectory, 강도 조절 인자 2개
     # :return: Filtered Trajectory
@@ -151,24 +144,4 @@ class Process:
         if confirm.lower() == 'y':
             return interpolated_trajectory
         else:
-            return trajectory
-        
-
-
-# 실행 코드
-if __name__ == "__main__":
-
-    # CSV로부터 Trajectory 객체 생성
-    traj = Trajectory.load_csv("test_sumin_a")
-
-    # 궤적 펌핑하기
-    traj_pumped = Process.pumping_data(traj)
-
-    # 궤적의 XYZ 성분에 칼만 필터 적용
-    traj_kalman = Process.kalman_filter(traj_pumped)
-    Trajectory.show(traj_pumped, traj_kalman)
-
-    # 궤적의 joint 성분에 제거-후-보간 적용
-    traj_kalman.target = 'J'
-    traj_interpolate = Process.interpolate(traj_kalman)
-    Trajectory.show(traj_interpolate, traj_kalman)
+            return trajectory 

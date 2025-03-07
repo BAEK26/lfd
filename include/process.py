@@ -4,8 +4,8 @@ import numpy as np
 from pykalman import KalmanFilter
 from scipy.interpolate import interp1d
 
-from include.trajectory import Trajectory
-from include.utils import Visualize
+from src.trajectory import Trajectory
+from src.utils import Visualize
 
 class Process:        
     # CSV 데이터를 펌핑합니다.

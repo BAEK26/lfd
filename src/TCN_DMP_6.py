@@ -11,6 +11,7 @@ DMP Performance Metrics: Final Goal Error, trajectory error(각 축 RMSE), etc.
 
 import os
 import sys
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 # --------------------------------------------------------
 # 상위 폴더 경로 추가 & Trajectory import
@@ -32,11 +33,14 @@ from tqdm import tqdm
 import datetime
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.animation as animation
+try:
+    from src.trajectory import Trajectory
+except:
+    from trajectory import Trajectory
 
 #from src.dataset_6d import DMPDataset6D  # (예) 6자유도 Dataset (pose_demo: (T,6))
-#from src.model_tcn_6d import End2EndDMP6D  # (예) 위에서 정의한 TCN + 6D DMP
-#from src.trainer_6d import TrainerEnd2EndDMP6D
-#from src.trajectory import Trajectory
+#from src.model_tcn_6d import DMP6D  # (예) 위에서 정의한 TCN + 6D DMP
+#from src.trainer_6d import Trainer6D
 # from src.utils import random_near_endpoints   # 필요하면 사용
 
 #######################################################
@@ -44,78 +48,30 @@ import matplotlib.animation as animation
 #######################################################
 class DMPDataset6D(Dataset):
     """
-    '6차원 DMP'를 위해:
+    '6차원 DMP'를 위한 데이터셋 클래스:
       - pose_demo: (T,6) = [x, y, z, roll, pitch, yaw]
-      - multi_in:  (T,8) = [ s(t), t_lin, (goal - start) 6D ]
+      - multi_in:  (T,8) = [s(t), t_lin, (goal - start) 6D]
       - dt_array: (T-1,) or None
       - start, goal: (6,)
-      (만약 rpy가 없다면 이 코드는 동작 불가 / 혹은 별도 예외처리)
     """
-# Trajectory 기능을 inner class로 포함
-    class Trajectory:
-        def __init__(self, timestamp, xyz, rpy):
-            self.timestamp = timestamp  # (T,) or None
-            self.xyz = xyz  # (T,3)
-            self.rpy = rpy  # (T,3)
-            
-        @staticmethod
-        def load_csv(csv_path):
-            # pandas로 CSV 파일 로드 (컬럼 이름은 CSV에 맞게 조정)
-            df = pd.read_csv(csv_path)
-            # 컬럼 'timestamp','x', 'y', 'z', 'roll', 'pitch', 'yaw'
-            xyz = df[['x', 'y', 'z']].values
-            # rpy가 모두 존재해야 함
-            if {'roll', 'pitch', 'yaw'}.issubset(df.columns):
-                rpy = df[['roll', 'pitch', 'yaw']].values
-            else:
-                rpy = None
-            timestamp = df['timestamp'].values if 'timestamp' in df.columns else None
-            return DMPDataset6D.Trajectory(timestamp, xyz, rpy)
-
-        def copy(self):
-            import copy
-            return copy.deepcopy(self)
-
-        @staticmethod
-        def show(traj1, traj2):
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.plot(traj1.xyz[:,0], traj1.xyz[:,1], traj1.xyz[:,2], label='Demo Trajectory')
-            ax.plot(traj2.xyz[:,0], traj2.xyz[:,1], traj2.xyz[:,2], label='Generated Trajectory')
-            ax.legend()
-
-    def __init__(self, csv_files, alpha_x=4.0, tau=1.0, use_real_dt=True):
+    def __init__(self, csv_files, alpha_x=4.0, tau=1.0):
         """
         csv_files : ['processed_a.csv', 'processed_b.csv', ...]
         alpha_x, tau : DMP canonical system params
-        use_real_dt  : True -> Trajectory.timestamps(ms) -> dt_array(s)
         """
         self.samples = []
         for csv_path in csv_files:
-            traj = DMPDataset6D.Trajectory.load_csv(csv_path)
-
-            # 반드시 xyz, rpy 둘 다 존재한다고 가정
+            traj = Trajectory.load_csv(csv_path)
+            
             xyz = traj.xyz  # (T,3)
-            rpy = getattr(traj, 'rpy', None)  # (T,3) or None
-
-            if rpy is None:
-                # rpy가 없으면 6D로 만들 수 없으므로, 여기서는 스킵하거나 예외
-                print(f"[WARN] {csv_path} has no rpy -> skip")
-                continue
-
-            T = len(xyz)
-            if T < 2:
-                continue
+            rpy = traj.euler_angles  # (T,3)
+            
+            T = traj.len()
 
             # timestamps -> dt_array
-            timestamp_ms = getattr(traj, 'timestamp', None)
-            if timestamp_ms is not None and use_real_dt:
-                dt_array = np.diff(timestamp_ms) / 1000.0  # 초 단위
-            else:
-                dt_array = None
-
+            dt_array = np.diff(traj.timestamp) / 1000.0  # 초 단위 변환
+            
             # 1) 6차원 pose_demo
-            #    shape: (T,6) = (x,y,z, roll, pitch, yaw)
             pose_demo = np.concatenate([xyz, rpy], axis=1)  # (T,6)
 
             # 2) start, goal: (6,)
@@ -128,15 +84,12 @@ class DMPDataset6D(Dataset):
 
             # 4) (goal - start) 6D
             gs_6d = goal_pose - start_pose  # (6,)
-            # -> multi_in
-            #    [ s(t), t_lin, (goal-start)6D ] => (T, 8)
             s_col = s.reshape(T,1)          # (T,1)
             t_col = t_lin.reshape(T,1)      # (T,1)
             repeated_gs = np.tile(gs_6d, (T,1))  # (T,6)
-
             multi_in = np.concatenate([s_col, t_col, repeated_gs], axis=1)  # (T,8)
 
-            # 5) sample dict
+            # 5) 샘플 딕셔너리 생성
             sample = {
                 'pose_demo': pose_demo,  # (T,6)
                 'start'    : start_pose, # (6,)
@@ -147,13 +100,12 @@ class DMPDataset6D(Dataset):
             self.samples.append(sample)
 
     def __len__(self):
-        # 전체 유효 CSV(샘플) 개수
+        """ 전체 유효 CSV(샘플) 개수 반환 """
         return len(self.samples)
 
     def __getitem__(self, idx):
-        # idx번째 샘플(딕셔너리) 반환
+        """ idx번째 샘플(딕셔너리) 반환 """
         return self.samples[idx]
-
 
 #######################################################
 # 2) TCN 정의
@@ -295,10 +247,7 @@ class TCN(nn.Module):
 #######################################################
 # 3) End-to-End DMP + TCN 모델 (수정 버전)
 #######################################################
-
-#초기속도 어떻게 수정한담...?
-
-class End2EndDMP6D(nn.Module):
+class DMP6D(nn.Module): #초기속도 어떻게 수정한담...?
     """
     TCN으로부터 6D forcing term f(t)을 예측 -> 
     DMP 방정식(6차원)으로 적분 -> x(t) in R^6 (x,y,z,roll,pitch,yaw)
@@ -314,7 +263,7 @@ class End2EndDMP6D(nn.Module):
                  kernel_size=2,
                  dropout=0.1,
                  causal=True):
-        super(End2EndDMP6D, self).__init__()
+        super(DMP6D, self).__init__()
         self.alpha_z = alpha_z
         self.beta_z  = beta_z
         self.tau     = tau
@@ -394,14 +343,13 @@ class End2EndDMP6D(nn.Module):
 #######################################################
 # 4) Trainer 함수
 #######################################################
-class TrainerEnd2EndDMP6D:
+class Trainer6D:
     """
     - 1) Dataset & DataLoader
     - 2) Model (TCN+DMP 6D)
     - 3) Training Loop
     - 4) Generate/Inference
     """
-
     def __init__(self,
                  csv_list,
                  alpha_x=4.0, tau=1.0,
@@ -409,14 +357,12 @@ class TrainerEnd2EndDMP6D:
                  lr=1e-3, num_channels=32, levels=4,
                  kernel_size=2, dropout=0.1, causal=True,
                  num_epochs=100,
-                 use_real_dt=True,
                  log_dir="./runs_tcn_dmp6d"):
         """
         csv_list:  예) [r"data/a.csv", r"data/b.csv", ...]
         alpha_x, tau : canonical system
         alpha_z, beta_z: DMP dynamical params
         num_channels, levels: TCN hparams
-        use_real_dt
         log_dir: tensorboard 로그 디렉토리
         """
         self.csv_list = csv_list
@@ -431,7 +377,6 @@ class TrainerEnd2EndDMP6D:
         self.dropout = dropout
         self.causal = causal
         self.num_epochs = num_epochs
-        self.use_real_dt = use_real_dt
         self.log_dir = log_dir
 
         # 1) Dataset & DataLoader
@@ -439,12 +384,11 @@ class TrainerEnd2EndDMP6D:
             csv_files=self.csv_list,
             alpha_x=self.alpha_x,
             tau=self.tau,
-            use_real_dt=self.use_real_dt
         )
         self.loader = DataLoader(self.dataset, batch_size=1, shuffle=False)
 
         # 2) Model 준비
-        self.model = End2EndDMP6D(
+        self.model = DMP6D(
             alpha_z=self.alpha_z, beta_z=self.beta_z, tau=self.tau,
             in_ch=8,    # s(t), t_lin, (goal-start)6D => 8
             out_ch=6,   # 6D forcing
@@ -456,6 +400,7 @@ class TrainerEnd2EndDMP6D:
         )
         self.model = self.model.float()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
         # 3) Optimizer / Loss
@@ -464,7 +409,7 @@ class TrainerEnd2EndDMP6D:
 
         # 4) TensorBoard
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.writer = SummaryWriter(log_dir=os.path.join(self.log_dir, str(current_time)))
+        self.writer = SummaryWriter(log_dir=os.path.join(self.log_dir, str(current_time)), flush_secs=30)
 
     def train(self):
         """
@@ -550,7 +495,6 @@ class TrainerEnd2EndDMP6D:
             if epoch % 100 == 0:
                 print(f"[Epoch {epoch}/{self.num_epochs}] avg_loss={avg_loss:.6f}, final_err={final_err:.6f}")
 
-
         self.writer.close()
         pbar.close()
         print("Training complete.")
@@ -563,17 +507,11 @@ class TrainerEnd2EndDMP6D:
           또는 간단히 'start','goal'만 새로 세팅 가능
         - start_6d_override: 만약 None이 아니면, CSV로부터 읽은 start 대신 이 값을 사용
         """
-        # 1) Dataset에서 단일 샘플을 만들거나, Trajectory.load_csv() 직접
-        #from src.trajectory import Trajectory
-        traj = DMPDataset6D.Trajectory.load_csv(csv_path)
-        xyz = traj.xyz  # (T,3)
-        rpy = getattr(traj, 'rpy', None)
-        if rpy is None: 
-            print("rpy not found, can't do 6D generate.")
-            return None
-        
-        pose_6d = np.concatenate([xyz, rpy], axis=1)  # (T,6)
+        traj = Trajectory.load_csv(csv_path)
+
+        pose_6d = np.concatenate([traj.xyz, traj.euler_angles], axis=1)  # (T,6)
         T = pose_6d.shape[0]
+
         # CSV에서 읽은 start, goal
         default_start_6d = pose_6d[0]
         default_goal_6d  = pose_6d[-1]
@@ -613,109 +551,40 @@ class TrainerEnd2EndDMP6D:
         # 새 Trajectory
         new_traj = traj.copy()
         new_traj.xyz = x_out_np[:, :3]  # (T,3)
+
         # rpy도 갱신하고 싶다면...
         # new_traj.rpy = x_out_np[:, 3:]  # (T,3)
 
-        df_orig = pd.read_csv(csv_path)
-        if 'gripper' in df_orig.columns:
-            # 길이 일치 체크 (원본 csv vs new_traj)
-            if len(df_orig) == new_traj.xyz.shape[0]:
-                # 그대로 복사
-                gripper_vals = df_orig['gripper'].values
-            else:
-                # 길이 안 맞으면 (원본보다 길거나 짧은 경우) → 간단히 앞부분만 or 0등 임의처리
-                # 여기서는 단순히 min 길이에 맞춘 예시
-                length = min(len(df_orig), new_traj.xyz.shape[0])
-                gripper_vals = df_orig['gripper'].values[:length]
-                # new_traj도 앞부분 자를 수도 있고, 사용자 상황에 맞춰 처리
-            # new_traj에 gripper를 저장(나중에 CSV 쓸때 편의위해)
-            # rpy처럼, gripper를 저장하려면 new_traj에 별도 필드를 만들어도 됨
-            new_traj.gripper = gripper_vals
-        else:
-            new_traj.gripper = None
-
         return new_traj
-    
     
     def generate_sequence(self, csv_paths):
         """
-        예) csv_paths = [
-            'processed_a.csv', 
-            'processed_b.csv', 
-            'processed_c.csv', 
-            'processed_d.csv'
-        ]
+        예) csv_paths = ['processed_a.csv', 'processed_b.csv', 'processed_c.csv', 'processed_d.csv']
         a->b->c->d 순서로 DMP를 체이닝하여 하나의 big trajectory를 생성
         """
         all_xyz = []
-        all_rpy = []
-        all_timestamps = []
+        all_euler_angles = []
+        all_joints = []
         all_grippers = []
+        all_weights = []
+        all_timestamps = []
         current_time_offset = 0.0
 
         sub_traj = None
-        for i, csv_path in enumerate(csv_paths):
-            if i == 0:
-                # 첫 번째는 override 없이 generate
-                sub_traj = self.generate(csv_path, start_6d_override=None)
-            else:
-                # 이전 구간 끝점을 다음 start로
-                last_xyz = sub_traj.xyz[-1]  # (3,)
-                if sub_traj.rpy is not None:
-                    last_rpy = sub_traj.rpy[-1]  # (3,)
-                else:
-                    last_rpy = np.zeros(3)
-                last_6d = np.concatenate([last_xyz, last_rpy])
-
-                sub_traj = self.generate(csv_path, start_6d_override=last_6d)
-
-            if sub_traj is None:
-                print(f"Failed to generate sub-traj for {csv_path}")
-                return None
-
-            # 누적
+        for csv_path in csv_paths:
+            sub_traj = Trajectory.load_csv(csv_path)
             all_xyz.append(sub_traj.xyz)
-            if sub_traj.rpy is not None:
-                all_rpy.append(sub_traj.rpy)
-            else:
-                all_rpy.append(None)
+            all_euler_angles.append(sub_traj.euler_angles)
+            all_joints.append(sub_traj.joints)
+            all_grippers.append(sub_traj.gripper)
+            all_weights.append(sub_traj.wegiht)
 
-            # timestamp 연결
-            T_i = sub_traj.xyz.shape[0]
-            if sub_traj.timestamp is not None:
-                t = sub_traj.timestamp + current_time_offset
-                current_time_offset = t[-1]
-            else:
-                # timestamp가 없다면 임의로 0~T_i-1
-                t = np.arange(T_i) + current_time_offset
-                current_time_offset = t[-1]
+            T_i = sub_traj.len()
+            t = sub_traj.timestamp + current_time_offset
+            current_time_offset = t[-1]
             all_timestamps.append(t)
 
-            # gripper 연결
-            if sub_traj.gripper is not None:
-                all_grippers.append(sub_traj.gripper)
-
-        # 최종 concatenate
-        final_xyz = np.concatenate(all_xyz, axis=0)  # (sum_of_T, 3)
-        
-        # rpy가 전부 None이 아닐 때만
-        if all_rpy[0] is not None:
-            final_rpy = np.concatenate([x for x in all_rpy if x is not None], axis=0)
-        else:
-            final_rpy = None
-
-        final_timestamp = np.concatenate(all_timestamps, axis=0)
-
-        # gripper가 전부 None이 아닐 때만
-        if all_grippers:
-            final_gripper = np.concatenate(all_grippers, axis=0)
-        else:
-            final_gripper = None
-
-        # 최종 결과 Trajectory
-        final_traj = DMPDataset6D.Trajectory(final_timestamp, final_xyz, final_rpy)
-        final_traj.gripper = final_gripper
-        return final_traj
+        return Trajectory(all_timestamps, all_xyz, all_rpy, all_joints, all_grippers, all_weights)
 
 
 #######################################################
@@ -735,7 +604,7 @@ if __name__ == "__main__":
     # 1) Dataset 확인
     dataset = DMPDataset6D(
         csv_files=csv_list,
-        alpha_x=4.0,
+        alpha_x=3.5,
         tau=1.0,
         use_real_dt=True
     )
@@ -758,20 +627,19 @@ if __name__ == "__main__":
     # 배치 수(len(self.loader))는 len(self.dataset)(=4)÷batch_size(=1)→ 4 
     # 에포크 수(self.num_epochs)는 main에서 num_epochs=100 → 100
 
-    trainer = TrainerEnd2EndDMP6D(
+    trainer = Trainer6D(
         csv_list=csv_list,
-        alpha_x=3, #줄이면 더 잘 따라감
+        alpha_x=3.8,
         tau=1.0,
         alpha_z=25.0,
-        beta_z=25.0/3,
-        lr=1e-4,
+        beta_z=25.0/5.0,
+        lr=1e-3,
         num_channels=32,
         levels=4,
         kernel_size=2,
-        dropout=0.1,
+        dropout=0.3,
         causal=True,
-        num_epochs=20000,
-        use_real_dt=True,
+        num_epochs=12000,
         log_dir=os.path.join(base_dir, "runs", "tcn_dmp_6d")
     )
 
@@ -804,10 +672,12 @@ if __name__ == "__main__":
         # 2) 체이닝으로 최종 궤적 생성
         final_traj = trainer.generate_sequence(sub_csv_list)
 
+
         # 3) 플롯
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-
+ 
+ 
         # 각 데모(a/b/c/d) 그리기
         colors = ['blue', 'green', 'red', 'orange']
         labels = ['demo_a', 'demo_b', 'demo_c', 'demo_d']

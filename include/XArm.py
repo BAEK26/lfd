@@ -46,18 +46,3 @@ class XArm:
                 new_trajectory.euler_angles[i] = euler_angles
 
         return new_trajectory
-    
-
-# 사용 예제
-if __name__ == "__main__":
-
-    # CSV로부터 객체 생성
-    traj = Trajectory.load_csv("processed_sumin_a.csv")
-
-    # XArm 객체 생성
-    xarm = XArm()
-
-    # traj1 시각화(기본값은 C - cartesian)
-    path1_DMPed_IK = xarm.trajectory_transform(traj)
-    path1_DMPed_IK.target = 'J'
-    path1_DMPed_IK.show()

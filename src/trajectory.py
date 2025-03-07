@@ -13,12 +13,13 @@ data_dir = os.path.join(base_dir, 'data')
 class Trajectory:
 
     # 기본 생성자 : 각 값들에 대한 배열을 인자로 받습니다(잘 사용 안 함).
-    def __init__(self, timestamp, xyz, euler_angles, joints, gripper, target='C'):
+    def __init__(self, timestamp, xyz, euler_angles, joints, gripper, weight, target='C'):
         self.timestamp = np.array(timestamp)
         self.xyz = np.array(xyz)
         self.euler_angles = np.array(euler_angles)
         self.joints = np.array(joints)
         self.gripper = np.array(gripper)
+        self.weight = np.array(weight)
         self.target = target  
 
         """
@@ -49,7 +50,7 @@ class Trajectory:
                             data['joint4'].values, data['joint5'].values, data['joint6'].values)).T
         
         # Trajectory 클래스 반환
-        return cls(data['timestamp'].values, xyz, euler_angles, joints, data['gripper'].values)
+        return cls(data['timestamp'].values, xyz, euler_angles, joints, data['gripper'].values, data['weight_sensor'].values)
 
     # Trajectory 인스턴스를 CSV로 저장합니다.
     # :param file_name: CSV 저장 파일 이름
@@ -68,7 +69,7 @@ class Trajectory:
             'roll': self.euler_angles[:, 0], 'pitch': self.euler_angles[:, 1], 'yaw': self.euler_angles[:, 2],
             'joint1': self.joints[:, 0], 'joint2': self.joints[:, 1], 'joint3': self.joints[:, 2],
             'joint4': self.joints[:, 3], 'joint5': self.joints[:, 4], 'joint6': self.joints[:, 5],
-            'gripper': self.gripper, 'weight_sensor': trajectory.weight_sensor if hasattr(self, 'weight_sensor') else None
+            'gripper': self.gripper, 'weight_sensor': trajectory.weight_sensor
 
         })
         data.to_csv(file_path, index=False, header=True)
@@ -84,7 +85,7 @@ class Trajectory:
             'roll': self.euler_angles[:, 0], 'pitch': self.euler_angles[:, 1], 'yaw': self.euler_angles[:, 2],
             'joint1': self.joints[:, 0], 'joint2': self.joints[:, 1], 'joint3': self.joints[:, 2],
             'joint4': self.joints[:, 3], 'joint5': self.joints[:, 4], 'joint6': self.joints[:, 5],
-            'gripper': self.gripper
+            'gripper': self.gripper, 'weight_sensor': trajectory.weight_sensor
         })
         return str(data)
 
@@ -101,6 +102,7 @@ class Trajectory:
                 self.euler_angles[key],
                 self.joints[key],
                 self.gripper[key],
+                self.weight[key],
                 self.target
             )
         else:
@@ -192,4 +194,3 @@ if __name__ == "__main__":
     # 조인트 시각화
     traj2.target = 'J'
     Trajectory.show(traj2, traj1) 
-

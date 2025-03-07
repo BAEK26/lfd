@@ -606,7 +606,6 @@ if __name__ == "__main__":
         csv_files=csv_list,
         alpha_x=3.5,
         tau=1.0,
-        use_real_dt=True
     )
     print("len(dataset) =", len(dataset))
     if len(dataset) > 0:

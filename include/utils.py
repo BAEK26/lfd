@@ -5,10 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import os
 
-try:
-    from trajectory import Trajectory  # 직접 실행할 경우
-except ImportError:
-    from src.trajectory import Trajectory  # main.py에서 실행할 경우
+from src.trajectory import Trajectory  # main.py에서 실행할 경우
 
 # 시각화
 class Visualize:
@@ -137,10 +134,3 @@ def random_near_endpoints(trajectory, option='end', random_rate=0.1):
             break
     
     return tuple(random_point)
-
-# 예제 코드
-if __name__ == "__main__":
-    
-    # CSV 불러와 Trajectory 객체 생성
-    traj = Trajectory.load_csv("test_sumin_a.csv")
-    Visualize.simulate(traj, frame_rate=10)

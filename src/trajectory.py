@@ -69,7 +69,7 @@ class Trajectory:
             'roll': self.euler_angles[:, 0], 'pitch': self.euler_angles[:, 1], 'yaw': self.euler_angles[:, 2],
             'joint1': self.joints[:, 0], 'joint2': self.joints[:, 1], 'joint3': self.joints[:, 2],
             'joint4': self.joints[:, 3], 'joint5': self.joints[:, 4], 'joint6': self.joints[:, 5],
-            'gripper': self.gripper, 'weight_sensor': trajectory.weight_sensor
+            'gripper': self.gripper, 'weight_sensor': self.weight_sensor
 
         })
         data.to_csv(file_path, index=False, header=True)
@@ -85,7 +85,7 @@ class Trajectory:
             'roll': self.euler_angles[:, 0], 'pitch': self.euler_angles[:, 1], 'yaw': self.euler_angles[:, 2],
             'joint1': self.joints[:, 0], 'joint2': self.joints[:, 1], 'joint3': self.joints[:, 2],
             'joint4': self.joints[:, 3], 'joint5': self.joints[:, 4], 'joint6': self.joints[:, 5],
-            'gripper': self.gripper, 'weight_sensor': trajectory.weight_sensor
+            'gripper': self.gripper, 'weight_sensor': self.weight_sensor
         })
         return str(data)
 

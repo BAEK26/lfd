@@ -160,33 +160,41 @@ class Process:
    
 # 실행 코드
 if __name__ == "__main__":
-    # 처리할 CSV 파일 목록 (파일 경로를 필요에 맞게 조정하세요)
+    import os
+    # 처리할 CSV 파일 목록 (경로는 상황에 맞게 조정하세요)
     csv_files = [
         "sepisode1/not_processed_a.csv",
         "sepisode1/not_processed_b.csv",
         "sepisode1/not_processed_c.csv",
         "sepisode1/not_processed_d.csv"
     ]
+    
     for csv_file in csv_files:
         # CSV로부터 Trajectory 객체 생성
         traj = Trajectory.load_csv(csv_file)
-
-        # 궤적 펌핑
+        print(f"{csv_file} 파일 로드 완료")
+        
+        # 궤적 펌핑 (타임스탬프 보간 등)
         traj_pumped = Process.pumping_data(traj)
-        print(f"{csv_file} 펌핑 완료, target:", traj_pumped.target)
-
+        print(f"{csv_file} 펌핑 완료, target: {traj_pumped.target}")
+        
         # 궤적의 XYZ 성분에 칼만 필터 적용
         traj_kalman = Process.kalman_filter(traj_pumped)
-
-        # 칼만 필터 적용 결과 시각화 (원한다면)
-        Trajectory.show(traj_pumped, traj_kalman)
-
-        # 최종 결과를 CSV로 저장
-        # 예: not_processed_a.csv -> final_trajectory_a.csv
+        print(f"{csv_file} 칼만 필터 적용 완료")
+        
+        # 입력 파일명에서 식별자 추출 (예: not_processed_a.csv -> a)
         base_name = os.path.basename(csv_file)
-        final_name = "processed" + base_name.split('_')[1]
-        traj_kalman.save_csv(final_name)
-        print(f"{final_name} 저장 완료")
+        # 파일명이 "not_processed_에피소드식별자.csv" 형태라고 가정
+        identifier = base_name.split('_')[-1].split('.')[0]
+
+        # 칼만 필터 적용 결과 시각화
+        Trajectory.show(traj_pumped, traj_kalman)
+        
+        # 최종 결과 CSV 파일명 지정
+        output_filename = f"processed_{identifier}.csv"
+        traj_kalman.save_csv(output_filename)
+        print(f"{output_filename} 저장 완료\n")
+
 
     # 궤적의 joint 성분에 제거-후-보간 적용
     #traj_kalman.target = 'J'

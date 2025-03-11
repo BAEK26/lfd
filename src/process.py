@@ -160,22 +160,37 @@ class Process:
    
 # 실행 코드
 if __name__ == "__main__":
+    # 처리할 CSV 파일 목록 (파일 경로를 필요에 맞게 조정하세요)
+    csv_files = [
+        "sepisode1/not_processed_a.csv",
+        "sepisode1/not_processed_b.csv",
+        "sepisode1/not_processed_c.csv",
+        "sepisode1/not_processed_d.csv"
+    ]
+    for csv_file in csv_files:
+        # CSV로부터 Trajectory 객체 생성
+        traj = Trajectory.load_csv(csv_file)
 
-    # CSV로부터 Trajectory 객체 생성
-    traj = Trajectory.load_csv("sepisode2/processed_aa.csv")
+        # 궤적 펌핑
+        traj_pumped = Process.pumping_data(traj)
+        print(f"{csv_file} 펌핑 완료, target:", traj_pumped.target)
 
-    # 궤적 펌핑하기
-    traj_pumped = Process.pumping_data(traj)
-    print(traj_pumped.target)
+        # 궤적의 XYZ 성분에 칼만 필터 적용
+        traj_kalman = Process.kalman_filter(traj_pumped)
 
-    # 궤적의 XYZ 성분에 칼만 필터 적용
-    traj_kalman = Process.kalman_filter(traj_pumped)
-    Trajectory.show(traj_pumped, traj_kalman)
+        # 칼만 필터 적용 결과 시각화 (원한다면)
+        Trajectory.show(traj_pumped, traj_kalman)
+
+        # 최종 결과를 CSV로 저장
+        # 예: not_processed_a.csv -> final_trajectory_a.csv
+        base_name = os.path.basename(csv_file)
+        final_name = "processed" + base_name.split('_')[1]
+        traj_kalman.save_csv(final_name)
+        print(f"{final_name} 저장 완료")
 
     # 궤적의 joint 성분에 제거-후-보간 적용
     #traj_kalman.target = 'J'
     #traj_interpolate = Process.interpolate(traj_kalman)
     #Trajectory.show(traj_interpolate, traj_kalman)
 
-    # 최종 결과를 CSV로 저장
-    traj.save_csv("final_trajectory")
+

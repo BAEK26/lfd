@@ -29,6 +29,8 @@ tqdm==4.67.1
 xarm-python-sdk==1.14.7
 *conda install pytorch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 pytorch-cuda=12.1 -c pytorch -c nvidia
 
+if you use Depth Camera, You should use Numpy == 1.23.5 (Zed 2i / sdk 4.2 / CUDA 11.8)
+
 [dev-packages]
 
 [requires]
